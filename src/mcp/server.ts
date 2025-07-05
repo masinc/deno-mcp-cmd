@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { runCommand } from "../command.ts";
+import { runCommand, getCommandStatus, getCommandProgress } from "../command.ts";
 import {
   deleteExpiredOutputs,
   getOutputById,
@@ -70,7 +70,7 @@ export function createMcpServer(): McpServer {
       return output.stdout;
     })();
 
-    const result = await runCommand(command, {
+    const result = runCommand(command, {
       args: args,
       cwd: Deno.cwd(),
       stdin: stdinContent,
@@ -78,7 +78,7 @@ export function createMcpServer(): McpServer {
 
     const structuredContent = {
       id: idToString(result.id),
-      output: result.output,
+      status: result.status,
     };
 
     return {
@@ -97,12 +97,12 @@ export function createMcpServer(): McpServer {
     inputSchema: {
       id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution. Use this to retrieve the stdout (main output) from that command."),
     },
-  }, async ({ id }) => {
+  }, ({ id }) => {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID: ${id}`);
     }
 
-    const output = await getOutputById(id);
+    const output = getOutputById(id);
 
     if (!output) {
       throw new Error(`Output with ID ${id} not found.`);
@@ -129,12 +129,12 @@ export function createMcpServer(): McpServer {
     inputSchema: {
       id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution. Use this to retrieve the stderr (error output/warnings) from that command."),
     },
-  }, async ({ id }) => {
+  }, ({ id }) => {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID: ${id}`);
     }
 
-    const output = await getOutputById(id);
+    const output = getOutputById(id);
 
     if (!output) {
       throw new Error(`Output with ID ${id} not found.`);
@@ -143,6 +143,66 @@ export function createMcpServer(): McpServer {
     const structuredContent = {
       base64Encoded: output.stderrIsEncoded,
       content: output.stderr,
+    };
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify(structuredContent),
+      }],
+      structuredContent,
+    };
+  });
+
+  mcpServer.registerTool("getCommandStatus", {
+    title: "Get Command Status",
+    description: `Check the execution status of a command by its output ID. Returns 'running', 'completed', 'failed', or 'not_found'.`,
+
+    inputSchema: {
+      id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution."),
+    },
+  }, ({ id }) => {
+    if (!isOutputId(id)) {
+      throw new Error(`Invalid output ID: ${id}`);
+    }
+
+    const status = getCommandStatus(id);
+
+    const structuredContent = {
+      id: idToString(id),
+      status,
+    };
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify(structuredContent),
+      }],
+      structuredContent,
+    };
+  });
+
+  mcpServer.registerTool("getCommandProgress", {
+    title: "Get Command Progress",
+    description: `Get detailed progress information of a command execution including status, exit code, output availability, and current output (useful for monitoring running commands).`,
+
+    inputSchema: {
+      id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution."),
+    },
+  }, ({ id }) => {
+    if (!isOutputId(id)) {
+      throw new Error(`Invalid output ID: ${id}`);
+    }
+
+    const progress = getCommandProgress(id);
+
+    if (!progress) {
+      throw new Error(`Command with ID ${id} not found.`);
+    }
+
+    const structuredContent = {
+      id: idToString(id),
+      ...progress,
     };
 
     return {

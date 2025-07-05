@@ -6,9 +6,11 @@ MCP (Model Context Protocol) server for executing shell commands and managing th
 
 This MCP server provides tools to execute shell commands and manage their outputs:
 
-- **runCommand**: Execute shell commands and capture stdout/stderr with output ID
+- **runCommand**: Execute shell commands asynchronously and capture stdout/stderr with output ID
 - **getStdoutById**: Retrieve stdout from a previous command execution 
 - **getStderrById**: Retrieve stderr from a previous command execution
+- **getCommandStatus**: Check execution status of a command (running/completed/failed)
+- **getCommandProgress**: Get detailed progress information with real-time output
 
 ## Installation & Usage
 
@@ -66,7 +68,7 @@ Execute a shell command and capture both stdout and stderr. Returns an output ID
 
 **Output:**
 - `id`: UUID output ID for retrieving results later
-- `output`: Combined stdout/stderr output in chronological order
+- `status`: "started" (command execution begins asynchronously)
 
 ### getStdoutById
 
@@ -90,9 +92,35 @@ Retrieve the stderr (standard error) from a previously executed command using it
 - `content`: The stderr content (base64 encoded if binary data)
 - `base64Encoded`: Boolean indicating if content is base64 encoded
 
+### getCommandStatus
+
+Check the execution status of a command by its output ID.
+
+**Input:**
+- `id`: The UUID output ID returned from a previous runCommand execution
+
+**Output:**
+- `status`: "running", "completed", "failed", or "not_found"
+
+### getCommandProgress
+
+Get detailed progress information of a command execution including status, exit code, output availability, and current output (useful for monitoring running commands).
+
+**Input:**
+- `id`: The UUID output ID returned from a previous runCommand execution
+
+**Output:**
+- `status`: Command execution status
+- `exitCode`: Exit code (null if still running)
+- `hasOutput`: Boolean indicating if command has produced output
+- `currentOutput`: Real-time output data including stdout/stderr
+
 ## Key Features
 
-- **Binary Data Support**: Automatically detects and base64 encodes binary output
+- **Asynchronous Execution**: Commands run non-blocking with real-time status tracking
+- **Real-time Output Streaming**: Live updates to database during command execution
+- **Binary Data Support**: Automatically detects and base64 encodes binary output  
+- **Command Status Tracking**: Monitor running/completed/failed states
 - **Command Chaining**: Use output from one command as input to another via `stdinForOutput`
 - **Chronological Output**: stdout/stderr mixed in correct time order for display
 - **Persistent Storage**: Command outputs stored in SQLite database with automatic cleanup

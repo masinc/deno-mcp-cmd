@@ -1,5 +1,11 @@
-import { insertOutput } from "./db/ouputs.ts";
-import type { OutputId } from "./db/types.ts";
+import {
+  createOutputId,
+  getOutputById,
+  insertOutput,
+  updateOutput,
+  updateStreamOutput,
+} from "./db/ouputs.ts";
+import type { CommandStatus, OutputId } from "./db/types.ts";
 import { encodeBase64 } from "@std/encoding";
 
 type StreamChunk = {
@@ -37,49 +43,75 @@ function combineBinaryChunks(chunks: Uint8Array[]): Uint8Array {
   return combined;
 }
 
-async function writeStdinData(writer: WritableStreamDefaultWriter<Uint8Array>, data: string | Uint8Array) {
+async function writeStdinData(
+  writer: WritableStreamDefaultWriter<Uint8Array>,
+  data: string | Uint8Array,
+) {
   try {
-    const stdinData = typeof data === "string" 
+    const stdinData = typeof data === "string"
       ? new TextEncoder().encode(data)
       : data;
     await writer.write(stdinData);
     await writer.close();
   } catch (error) {
     await writer.abort();
-    throw new Error(`Failed to write stdin: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to write stdin: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    );
   }
 }
 
-async function processStream(stream: ReadableStream<Uint8Array>, type: "stdout" | "stderr") {
+async function processStream(
+  stream: ReadableStream<Uint8Array>,
+  type: "stdout" | "stderr",
+  outputId: OutputId,
+) {
   const chunks: StreamChunk[] = [];
-  
-  await stream.pipeTo(new WritableStream({
-    write(chunk) {
-      try {
-        const content = new TextDecoder("utf-8", { fatal: true }).decode(chunk);
-        chunks.push({
-          content,
-          displayText: content,
-          timestamp: performance.now(),
-          type,
-        });
-      } catch (_error) {
-        chunks.push({
-          content: chunk,
-          displayText: `[Binary data: ${chunk.length} bytes]`,
-          timestamp: performance.now(),
-          type,
-        });
-      }
-    },
-  }));
-  
+
+  await stream.pipeTo(
+    new WritableStream({
+      write(chunk) {
+        try {
+          const content = new TextDecoder("utf-8", { fatal: true }).decode(
+            chunk,
+          );
+          const chunkData = {
+            content,
+            displayText: content,
+            timestamp: performance.now(),
+            type,
+          };
+          chunks.push(chunkData);
+
+          // リアルタイムでDB更新
+          updateStreamOutput(outputId, type, content, false);
+        } catch (_error) {
+          const displayText = `[Binary data: ${chunk.length} bytes]`;
+          const chunkData = {
+            content: chunk,
+            displayText,
+            timestamp: performance.now(),
+            type,
+          };
+          chunks.push(chunkData);
+
+          // リアルタイムでDB更新（バイナリデータ）
+          updateStreamOutput(outputId, type, chunk, true);
+        }
+      },
+    }),
+  );
+
   return chunks;
 }
 
-function processOutputData(outputs: (string | Uint8Array)[]): { data: string; isEncoded: boolean } {
+function processOutputData(
+  outputs: (string | Uint8Array)[],
+): { data: string; isEncoded: boolean } {
   const hasBinary = outputs.some(isBinaryData);
-  
+
   if (hasBinary) {
     const binaryChunks = outputs.filter(isBinaryData);
     return {
@@ -95,13 +127,11 @@ function processOutputData(outputs: (string | Uint8Array)[]): { data: string; is
   }
 }
 
-export async function runCommand(
+async function executeCommandAsync(
+  id: OutputId,
   command: string,
   options?: CommandOptions,
-): Promise<{
-  id: OutputId;
-  output: string;
-}> {
+): Promise<void> {
   const cmd = new Deno.Command(command, {
     args: options?.args || [],
     cwd: options?.cwd,
@@ -120,40 +150,115 @@ export async function runCommand(
 
   // ストリーム処理
   const [stdoutChunks, stderrChunks, status] = await Promise.all([
-    processStream(child.stdout, "stdout"),
-    processStream(child.stderr, "stderr"),
+    processStream(child.stdout, "stdout", id),
+    processStream(child.stderr, "stderr", id),
     child.status,
   ]);
 
   // 全チャンクを時系列順にソート
-  const allChunks = [...stdoutChunks, ...stderrChunks].sort((a, b) => a.timestamp - b.timestamp);
+  const allChunks = [...stdoutChunks, ...stderrChunks].sort((a, b) =>
+    a.timestamp - b.timestamp
+  );
 
-  // 表示用出力の生成（時系列順）
-  const displayOutput = allChunks.map(chunk => chunk.displayText);
 
   // DB保存用データの処理（type別に分離）
-  const stdoutContents = allChunks.filter(chunk => chunk.type === "stdout").map(chunk => chunk.content);
-  const stderrContents = allChunks.filter(chunk => chunk.type === "stderr").map(chunk => chunk.content);
+  const stdoutContents = allChunks.filter((chunk) => chunk.type === "stdout")
+    .map((chunk) => chunk.content);
+  const stderrContents = allChunks.filter((chunk) => chunk.type === "stderr")
+    .map((chunk) => chunk.content);
 
   const stdoutData = processOutputData(stdoutContents);
   const stderrData = processOutputData(stderrContents);
 
-  // データベースに保存
-  const id = insertOutput({
-    stdout: stdoutData.data,
-    stdoutIsEncoded: stdoutData.isEncoded,
-    stderr: stderrData.data,
-    stderrIsEncoded: stderrData.isEncoded,
-  });
-
-  if (!status.success) {
-    throw new Error(
-      `Command failed with exit code ${status.code}. Output ID: ${id}`,
-    );
+  // データベースを更新（完了状態に）
+  try {
+    updateOutput({
+      id,
+      stdout: stdoutData.data,
+      stdoutIsEncoded: stdoutData.isEncoded,
+      stderr: stderrData.data,
+      stderrIsEncoded: stderrData.isEncoded,
+      status: status.success ? "completed" : "failed",
+      exitCode: status.code,
+    });
+  } catch (error) {
+    console.error(`Failed to save command output for ID ${id}:`, error);
   }
+}
+
+export function runCommand(
+  command: string,
+  options?: CommandOptions,
+): {
+  id: OutputId;
+  status: "started";
+} {
+  const id = createOutputId();
+
+  // 初期状態でDBレコード作成
+  try {
+    insertOutput({
+      id,
+      stdout: "",
+      stderr: "",
+      status: "running",
+      exitCode: null,
+    });
+  } catch (error) {
+    console.error(`Failed to create initial record for ID ${id}:`, error);
+    throw new Error("Failed to start command execution");
+  }
+
+  // バックグラウンドで非同期実行（メインスレッドをブロックしない）
+  setTimeout(() => {
+    executeCommandAsync(id, command, options).catch((error) => {
+      console.error(`Command execution failed for ID ${id}:`, error);
+      // エラー時はfailed状態に更新
+      try {
+        updateOutput({
+          id,
+          stderr: error instanceof Error ? error.message : "Unknown error",
+          status: "failed",
+          exitCode: -1,
+        });
+      } catch (dbError) {
+        console.error(`Failed to update error status for ID ${id}:`, dbError);
+      }
+    });
+  }, 0);
 
   return {
     id,
-    output: displayOutput.join("\n"),
+    status: "started",
   };
+}
+
+export function getCommandStatus(id: OutputId): CommandStatus | "not_found" {
+  try {
+    const output = getOutputById(id);
+    return output?.status || "not_found";
+  } catch {
+    return "not_found";
+  }
+}
+
+export function getCommandProgress(id: OutputId) {
+  try {
+    const output = getOutputById(id);
+    if (!output) return null;
+
+    return {
+      status: output.status,
+      exitCode: output.exitCode,
+      hasOutput: output.stdout.length > 0 || output.stderr.length > 0,
+      currentOutput: {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        stdoutIsEncoded: output.stdoutIsEncoded,
+        stderrIsEncoded: output.stderrIsEncoded,
+      },
+    };
+  } catch {
+    return null;
+  }
 }
