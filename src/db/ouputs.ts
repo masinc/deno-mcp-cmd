@@ -1,6 +1,6 @@
-import { initOrGetDb } from "./index.ts";
-import { type OutputId, OutputSchema } from "./types.ts";
-import type { SQLInputValue } from "node:sqlite";
+import { initOrGetDrizzleDb, outputs } from "./drizzle.ts";
+import { type OutputId, type CommandStatus, OutputIdSchema } from "./schema.ts";
+import { eq, lt } from "drizzle-orm";
 import { encodeBase64, decodeBase64 } from "@std/encoding";
 
 export function createOutputId(): OutputId {
@@ -29,29 +29,23 @@ type InsertOutputParams = {
   exitCode?: number | null;
 };
 
-export function insertOutput(
+export async function insertOutput(
   params: InsertOutputParams,
-): OutputId {
+): Promise<OutputId> {
   try {
-    const db = initOrGetDb();
+    const db = await initOrGetDrizzleDb();
     const createdAt = new Date().toISOString();
 
-    const result = db.prepare(
-      `INSERT INTO outputs (id, stdout, stdoutIsEncoded, stderr, stderrIsEncoded, status, exitCode, createdAt) VALUES (:id, :stdout, :stdoutIsEncoded, :stderr, :stderrIsEncoded, :status, :exitCode, :createdAt)`,
-    ).run({
+    await db.insert(outputs).values({
       id: params.id,
       stdout: params.stdout,
-      stdoutIsEncoded: params.stdoutIsEncoded ? 1 : 0,
+      stdoutIsEncoded: params.stdoutIsEncoded || false,
       stderr: params.stderr || "",
-      stderrIsEncoded: params.stderrIsEncoded ? 1 : 0,
+      stderrIsEncoded: params.stderrIsEncoded || false,
       status: params.status || "running",
       exitCode: params.exitCode || null,
       createdAt,
     });
-
-    if (result.changes !== 1) {
-      throw new Error(`Failed to insert output: expected 1 change, got ${result.changes}`);
-    }
 
     return params.id;
   } catch (error) {
@@ -69,53 +63,46 @@ type OutputResult = {
   createdAt: string;
 };
 
-export function getOutputById(id: OutputId): OutputResult | undefined {
+export async function getOutputById(id: OutputId): Promise<OutputResult | undefined> {
   try {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID format: ${id}`);
     }
 
-    const db = initOrGetDb();
-    const result = db.prepare(`SELECT * FROM outputs WHERE id = ?`).get(id);
+    const db = await initOrGetDrizzleDb();
+    const result = await db.select().from(outputs).where(eq(outputs.id, id)).limit(1);
 
-    if (!result) {
+    if (result.length === 0) {
       return undefined;
     }
 
-    const output = OutputSchema.safeParse(result);
-
-    if (!output.success) {
-      throw new Error(`Failed to parse output result: ${output.error.message}`);
-    }
-
+    const output = result[0];
     return {
-      stdout: output.data.stdout,
-      stdoutIsEncoded: Boolean(output.data.stdoutIsEncoded),
-      stderr: output.data.stderr,
-      stderrIsEncoded: Boolean(output.data.stderrIsEncoded),
-      status: output.data.status,
-      exitCode: output.data.exitCode,
-      createdAt: output.data.createdAt,
+      stdout: output.stdout,
+      stdoutIsEncoded: output.stdoutIsEncoded,
+      stderr: output.stderr,
+      stderrIsEncoded: output.stderrIsEncoded,
+      status: output.status,
+      exitCode: output.exitCode,
+      createdAt: output.createdAt,
     };
   } catch (error) {
     throw new Error(`Database error while getting output by ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
-export function deleteExpiredOutputs(
+export async function deleteExpiredOutputs(
   expirationDays: number = 1,
-): number {
+): Promise<number> {
   try {
-    const db = initOrGetDb();
+    const db = await initOrGetDrizzleDb();
     const expirationDate = new Date();
     expirationDate.setDate(expirationDate.getDate() - expirationDays);
     const isoExpirationDate = expirationDate.toISOString();
 
-    const result = db.prepare(
-      `DELETE FROM outputs WHERE createdAt < ?`,
-    ).run(isoExpirationDate);
+    const result = await db.delete(outputs).where(lt(outputs.createdAt, isoExpirationDate));
     
-    return Number(result.changes);
+    return result.rowsAffected || 0;
   } catch (error) {
     throw new Error(`Database error while deleting expired outputs: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -131,61 +118,53 @@ type UpdateOutputParams = {
   exitCode?: number | null;
 };
 
-export function updateOutput(params: UpdateOutputParams): void {
+export async function updateOutput(params: UpdateOutputParams): Promise<void> {
   try {
-    const db = initOrGetDb();
+    const db = await initOrGetDrizzleDb();
     
-    const setParts: string[] = [];
-    const values: Record<string, SQLInputValue> = { id: params.id };
+    const updateValues: Record<string, any> = {};
     
     if (params.stdout !== undefined) {
-      setParts.push("stdout = :stdout");
-      values.stdout = params.stdout;
+      updateValues.stdout = params.stdout;
     }
     if (params.stdoutIsEncoded !== undefined) {
-      setParts.push("stdoutIsEncoded = :stdoutIsEncoded");
-      values.stdoutIsEncoded = params.stdoutIsEncoded ? 1 : 0;
+      updateValues.stdoutIsEncoded = params.stdoutIsEncoded;
     }
     if (params.stderr !== undefined) {
-      setParts.push("stderr = :stderr");
-      values.stderr = params.stderr;
+      updateValues.stderr = params.stderr;
     }
     if (params.stderrIsEncoded !== undefined) {
-      setParts.push("stderrIsEncoded = :stderrIsEncoded");
-      values.stderrIsEncoded = params.stderrIsEncoded ? 1 : 0;
+      updateValues.stderrIsEncoded = params.stderrIsEncoded;
     }
     if (params.status !== undefined) {
-      setParts.push("status = :status");
-      values.status = params.status;
+      updateValues.status = params.status;
     }
     if (params.exitCode !== undefined) {
-      setParts.push("exitCode = :exitCode");
-      values.exitCode = params.exitCode;
+      updateValues.exitCode = params.exitCode;
     }
     
-    if (setParts.length === 0) {
+    if (Object.keys(updateValues).length === 0) {
       throw new Error("No fields to update");
     }
     
-    const sql = `UPDATE outputs SET ${setParts.join(", ")} WHERE id = :id`;
-    const result = db.prepare(sql).run(values);
+    const result = await db.update(outputs).set(updateValues).where(eq(outputs.id, params.id));
     
-    if (result.changes !== 1) {
-      throw new Error(`Failed to update output: expected 1 change, got ${result.changes}`);
+    if (result.rowsAffected !== 1) {
+      throw new Error(`Failed to update output: expected 1 change, got ${result.rowsAffected}`);
     }
   } catch (error) {
     throw new Error(`Database error while updating output: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
-export function updateStreamOutput(
+export async function updateStreamOutput(
   outputId: OutputId,
   streamType: "stdout" | "stderr",
   content: string | Uint8Array,
   isBinary: boolean,
-): void {
+): Promise<void> {
   try {
-    const currentOutput = getOutputById(outputId);
+    const currentOutput = await getOutputById(outputId);
     if (!currentOutput) {
       throw new Error(`Output with ID ${outputId} not found`);
     }
@@ -213,7 +192,7 @@ export function updateStreamOutput(
         updatedStdout = currentOutput.stdout + newText;
       }
       
-      updateOutput({
+      await updateOutput({
         id: outputId,
         stdout: updatedStdout,
         stdoutIsEncoded: willBeEncoded,
@@ -241,7 +220,7 @@ export function updateStreamOutput(
         updatedStderr = currentOutput.stderr + newText;
       }
       
-      updateOutput({
+      await updateOutput({
         id: outputId,
         stderr: updatedStderr,
         stderrIsEncoded: willBeEncoded,

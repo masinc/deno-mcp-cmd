@@ -9,8 +9,8 @@ import {
 } from "../db/ouputs.ts";
 import { decodeBase64 } from "@std/encoding";
 
-export function createMcpServer(): McpServer {
-  deleteExpiredOutputs();
+export async function createMcpServer(): Promise<McpServer> {
+  await deleteExpiredOutputs();
 
   const mcpServer = new McpServer({
     name: "mcp-cmd",
@@ -97,12 +97,12 @@ export function createMcpServer(): McpServer {
     inputSchema: {
       id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution. Use this to retrieve the stdout (main output) from that command."),
     },
-  }, ({ id }) => {
+  }, async ({ id }) => {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID: ${id}`);
     }
 
-    const output = getOutputById(id);
+    const output = await getOutputById(id);
 
     if (!output) {
       throw new Error(`Output with ID ${id} not found.`);
@@ -129,12 +129,12 @@ export function createMcpServer(): McpServer {
     inputSchema: {
       id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution. Use this to retrieve the stderr (error output/warnings) from that command."),
     },
-  }, ({ id }) => {
+  }, async ({ id }) => {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID: ${id}`);
     }
 
-    const output = getOutputById(id);
+    const output = await getOutputById(id);
 
     if (!output) {
       throw new Error(`Output with ID ${id} not found.`);
@@ -161,12 +161,12 @@ export function createMcpServer(): McpServer {
     inputSchema: {
       id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution."),
     },
-  }, ({ id }) => {
+  }, async ({ id }) => {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID: ${id}`);
     }
 
-    const status = getCommandStatus(id);
+    const status = await getCommandStatus(id);
 
     const structuredContent = {
       id: idToString(id),
@@ -189,12 +189,12 @@ export function createMcpServer(): McpServer {
     inputSchema: {
       id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution."),
     },
-  }, ({ id }) => {
+  }, async ({ id }) => {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID: ${id}`);
     }
 
-    const progress = getCommandProgress(id);
+    const progress = await getCommandProgress(id);
 
     if (!progress) {
       throw new Error(`Command with ID ${id} not found.`);

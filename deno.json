@@ -9,18 +9,22 @@
   },
   "tasks": {
     "dev": "deno run --watch main.ts",
-    "run-http": "deno serve --allow-run --allow-read --allow-write --allow-sys src/bin/http.ts",
+    "remove-db": "rm -f ~/.config/@masinc/mcp-cmd/mcp-cmd.db",
+    "run-http": "deno serve --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi src/bin/http.ts",
     "inspect-http": "npx @modelcontextprotocol/inspector \"http://localhost:8000/mcp\"",
-    "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys src/bin/stdio.ts",
+    "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi src/bin/stdio.ts",
     "inspect-stdio": "npx @modelcontextprotocol/inspector deno task run-stdio"
   },
   "imports": {
     "@hono/mcp": "npm:@hono/mcp@^0.1.0",
+    "@libsql/client": "npm:@libsql/client@^0.15.9",
     "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.15.0",
     "@std/assert": "jsr:@std/assert@1",
     "@std/encoding": "jsr:@std/encoding@^1.0.10",
     "@std/fs": "jsr:@std/fs@^1.0.19",
     "@std/path": "jsr:@std/path@^1.1.1",
+    "drizzle-orm": "npm:drizzle-orm@^0.44.2",
+    "drizzle-zod": "npm:drizzle-zod@^0.8.2",
     "hono": "npm:hono@^4.8.4",
     "zod": "npm:zod@^3.25.74"
   }

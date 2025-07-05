@@ -86,7 +86,9 @@ async function processStream(
           chunks.push(chunkData);
 
           // リアルタイムでDB更新
-          updateStreamOutput(outputId, type, content, false);
+          updateStreamOutput(outputId, type, content, false).catch(error => {
+            console.error(`Failed to update stream output: ${error}`);
+          });
         } catch (_error) {
           const displayText = `[Binary data: ${chunk.length} bytes]`;
           const chunkData = {
@@ -98,7 +100,9 @@ async function processStream(
           chunks.push(chunkData);
 
           // リアルタイムでDB更新（バイナリデータ）
-          updateStreamOutput(outputId, type, chunk, true);
+          updateStreamOutput(outputId, type, chunk, true).catch(error => {
+            console.error(`Failed to update stream output: ${error}`);
+          });
         }
       },
     }),
@@ -172,7 +176,7 @@ async function executeCommandAsync(
 
   // データベースを更新（完了状態に）
   try {
-    updateOutput({
+    await updateOutput({
       id,
       stdout: stdoutData.data,
       stdoutIsEncoded: stdoutData.isEncoded,
@@ -196,34 +200,29 @@ export function runCommand(
   const id = createOutputId();
 
   // 初期状態でDBレコード作成
-  try {
-    insertOutput({
-      id,
-      stdout: "",
-      stderr: "",
-      status: "running",
-      exitCode: null,
-    });
-  } catch (error) {
+  insertOutput({
+    id,
+    stdout: "",
+    stderr: "",
+    status: "running",
+    exitCode: null,
+  }).catch(error => {
     console.error(`Failed to create initial record for ID ${id}:`, error);
-    throw new Error("Failed to start command execution");
-  }
+  });
 
   // バックグラウンドで非同期実行（メインスレッドをブロックしない）
   setTimeout(() => {
     executeCommandAsync(id, command, options).catch((error) => {
       console.error(`Command execution failed for ID ${id}:`, error);
       // エラー時はfailed状態に更新
-      try {
-        updateOutput({
-          id,
-          stderr: error instanceof Error ? error.message : "Unknown error",
-          status: "failed",
-          exitCode: -1,
-        });
-      } catch (dbError) {
+      updateOutput({
+        id,
+        stderr: error instanceof Error ? error.message : "Unknown error",
+        status: "failed",
+        exitCode: -1,
+      }).catch(dbError => {
         console.error(`Failed to update error status for ID ${id}:`, dbError);
-      }
+      });
     });
   }, 0);
 
@@ -233,18 +232,18 @@ export function runCommand(
   };
 }
 
-export function getCommandStatus(id: OutputId): CommandStatus | "not_found" {
+export async function getCommandStatus(id: OutputId): Promise<CommandStatus | "not_found"> {
   try {
-    const output = getOutputById(id);
+    const output = await getOutputById(id);
     return output?.status || "not_found";
   } catch {
     return "not_found";
   }
 }
 
-export function getCommandProgress(id: OutputId) {
+export async function getCommandProgress(id: OutputId) {
   try {
-    const output = getOutputById(id);
+    const output = await getOutputById(id);
     if (!output) return null;
 
     return {

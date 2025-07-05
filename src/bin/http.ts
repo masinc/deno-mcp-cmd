@@ -12,7 +12,7 @@ app.get("/", (c) => {
 });
 
 app.all("/mcp", async (c) => {
-  const mcpServer = createMcpServer();
+  const mcpServer = await createMcpServer();
   const transport = new StreamableHTTPTransport();
   await mcpServer.connect(transport);
   return transport.handleRequest(c);
