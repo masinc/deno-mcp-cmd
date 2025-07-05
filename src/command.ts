@@ -2,9 +2,11 @@ import { insertOutput } from "./db/ouputs.ts";
 import type { OutputId } from "./db/types.ts";
 import { encodeBase64 } from "@std/encoding";
 
-type Output = {
-  type: "stdout" | "stderr";
+type StreamChunk = {
   content: string | Uint8Array;
+  displayText: string;
+  timestamp: number;
+  type: "stdout" | "stderr";
 };
 
 type CommandOptions = {
@@ -35,6 +37,64 @@ function combineBinaryChunks(chunks: Uint8Array[]): Uint8Array {
   return combined;
 }
 
+async function writeStdinData(writer: WritableStreamDefaultWriter<Uint8Array>, data: string | Uint8Array) {
+  try {
+    const stdinData = typeof data === "string" 
+      ? new TextEncoder().encode(data)
+      : data;
+    await writer.write(stdinData);
+    await writer.close();
+  } catch (error) {
+    await writer.abort();
+    throw new Error(`Failed to write stdin: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function processStream(stream: ReadableStream<Uint8Array>, type: "stdout" | "stderr") {
+  const chunks: StreamChunk[] = [];
+  
+  await stream.pipeTo(new WritableStream({
+    write(chunk) {
+      try {
+        const content = new TextDecoder("utf-8", { fatal: true }).decode(chunk);
+        chunks.push({
+          content,
+          displayText: content,
+          timestamp: performance.now(),
+          type,
+        });
+      } catch (_error) {
+        chunks.push({
+          content: chunk,
+          displayText: `[Binary data: ${chunk.length} bytes]`,
+          timestamp: performance.now(),
+          type,
+        });
+      }
+    },
+  }));
+  
+  return chunks;
+}
+
+function processOutputData(outputs: (string | Uint8Array)[]): { data: string; isEncoded: boolean } {
+  const hasBinary = outputs.some(isBinaryData);
+  
+  if (hasBinary) {
+    const binaryChunks = outputs.filter(isBinaryData);
+    return {
+      data: encodeBase64(combineBinaryChunks(binaryChunks)),
+      isEncoded: true,
+    };
+  } else {
+    const textChunks = outputs.filter(isStringData);
+    return {
+      data: textChunks.join("\n"),
+      isEncoded: false,
+    };
+  }
+}
+
 export async function runCommand(
   command: string,
   options?: CommandOptions,
@@ -53,121 +113,37 @@ export async function runCommand(
 
   const child = cmd.spawn();
 
-  // stdin が指定されている場合、標準入力に書き込む
+  // stdin処理
   if (options?.stdin) {
-    const stdinWriter = child.stdin.getWriter();
-    const stdinData = typeof options.stdin === "string" 
-      ? new TextEncoder().encode(options.stdin)
-      : options.stdin;
-    await stdinWriter.write(stdinData);
-    await stdinWriter.close();
+    await writeStdinData(child.stdin.getWriter(), options.stdin);
   }
 
-  const output: Output[] = [];
-
-  // DBデータ格納用の配列
-  const rawOutput: Output[] = [];
-
-  const [_stdout, _stderr, status] = await Promise.all([
-    child.stdout.pipeTo(
-      new WritableStream({
-        write(chunk) {
-          try {
-            const content = new TextDecoder("utf-8", { fatal: true }).decode(
-              chunk,
-            );
-
-            output.push({
-              type: "stdout",
-              content,
-            });
-
-            rawOutput.push({
-              type: "stdout",
-              content,
-            });
-          } catch (_error) {
-            // バイナリデータの場合は base64 エンコード
-            const content = `[Binary data: ${chunk.length} bytes]`;
-            output.push({
-              type: "stdout",
-              content,
-            });
-
-            rawOutput.push({
-              type: "stdout",
-              content: chunk,
-            });
-          }
-        },
-      }),
-    ),
-    child.stderr.pipeTo(
-      new WritableStream({
-        write(chunk) {
-          try {
-            const content = new TextDecoder("utf-8", { fatal: true }).decode(
-              chunk,
-            );
-
-            output.push({
-              type: "stderr",
-              content,
-            });
-
-            rawOutput.push({
-              type: "stderr",
-              content,
-            });
-          } catch (_error) {
-            // バイナリデータの場合は base64 エンコード
-            const content = `[Binary data: ${chunk.length} bytes]`;
-
-            output.push({
-              type: "stderr",
-              content,
-            });
-
-            rawOutput.push({
-              type: "stderr",
-              content: chunk,
-            });
-          }
-        },
-      }),
-    ),
+  // ストリーム処理
+  const [stdoutChunks, stderrChunks, status] = await Promise.all([
+    processStream(child.stdout, "stdout"),
+    processStream(child.stderr, "stderr"),
     child.status,
   ]);
 
-  const stdouts = rawOutput.filter((o) => o.type === "stdout").map((o) =>
-    o.content
-  );
+  // 全チャンクを時系列順にソート
+  const allChunks = [...stdoutChunks, ...stderrChunks].sort((a, b) => a.timestamp - b.timestamp);
 
-  const isStdoutBinary = stdouts.some((s) =>
-    typeof s === "object" && s instanceof Uint8Array
-  );
+  // 表示用出力の生成（時系列順）
+  const displayOutput = allChunks.map(chunk => chunk.displayText);
 
-  const stderrs = rawOutput.filter((o) => o.type === "stderr").map((o) =>
-    o.content
-  );
+  // DB保存用データの処理（type別に分離）
+  const stdoutContents = allChunks.filter(chunk => chunk.type === "stdout").map(chunk => chunk.content);
+  const stderrContents = allChunks.filter(chunk => chunk.type === "stderr").map(chunk => chunk.content);
 
-  const isStderrBinary = stderrs.some((s) =>
-    typeof s === "object" && s instanceof Uint8Array
-  );
+  const stdoutData = processOutputData(stdoutContents);
+  const stderrData = processOutputData(stderrContents);
 
-  const stdoutData = isStdoutBinary
-    ? encodeBase64(combineBinaryChunks(stdouts.filter(isBinaryData)))
-    : stdouts.filter(isStringData).join("\n");
-
-  const stderrData = isStderrBinary
-    ? encodeBase64(combineBinaryChunks(stderrs.filter(isBinaryData)))
-    : stderrs.filter(isStringData).join("\n");
-
+  // データベースに保存
   const id = insertOutput({
-    stdout: stdoutData,
-    stdoutIsEncoded: isStdoutBinary,
-    stderr: stderrData,
-    stderrIsEncoded: isStderrBinary,
+    stdout: stdoutData.data,
+    stdoutIsEncoded: stdoutData.isEncoded,
+    stderr: stderrData.data,
+    stderrIsEncoded: stderrData.isEncoded,
   });
 
   if (!status.success) {
@@ -178,6 +154,6 @@ export async function runCommand(
 
   return {
     id,
-    output: output.map((o) => o.content).join("\n"),
+    output: displayOutput.join("\n"),
   };
 }
