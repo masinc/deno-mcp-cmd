@@ -9,7 +9,7 @@ import {
 } from "../db/ouputs.ts";
 import { decodeBase64 } from "@std/encoding";
 
-export function createMcpServer() {
+export function createMcpServer(): McpServer {
   deleteExpiredOutputs();
 
   const mcpServer = new McpServer({
