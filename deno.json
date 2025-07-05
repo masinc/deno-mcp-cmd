@@ -1,0 +1,27 @@
+{
+  "name": "@masinc/mcp-cmd",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mcp/server.ts",
+    "./bin/stdio": "./src/bin/stdio.ts",
+    "./bin/http": "./src/bin/http.ts"
+  },
+  "tasks": {
+    "dev": "deno run --watch main.ts",
+    "run-http": "deno serve --allow-run --allow-read --allow-write --allow-sys src/bin/http.ts",
+    "inspect-http": "npx @modelcontextprotocol/inspector \"http://localhost:8000/mcp\"",
+    "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys src/bin/stdio.ts",
+    "inspect-stdio": "npx @modelcontextprotocol/inspector deno task run-stdio"
+  },
+  "imports": {
+    "@hono/mcp": "npm:@hono/mcp@^0.1.0",
+    "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.15.0",
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/encoding": "jsr:@std/encoding@^1.0.10",
+    "@std/fs": "jsr:@std/fs@^1.0.19",
+    "@std/path": "jsr:@std/path@^1.1.1",
+    "hono": "npm:hono@^4.8.4",
+    "zod": "npm:zod@^3.25.74"
+  }
+}
