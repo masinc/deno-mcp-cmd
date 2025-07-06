@@ -108,13 +108,13 @@ Deno.test("Template utilities", async (t) => {
 });
 
 Deno.test("Template integration with rule builders", async (t) => {
-  await t.step("shell expansion with custom template for approve", () => {
+  await t.step("shell expansion with custom template for skip", () => {
     const ctx = createContext("$(ls)", [], undefined, ["warn-shell-expansion"]);
-    const data = createTemplateData(ctx, { action: "approve" });
-    const template = "Custom approval: <%= it.command %> acknowledged in session <%= it.sessionId %>";
+    const data = createTemplateData(ctx, { action: "skip" });
+    const template = "Custom skip: <%= it.command %> acknowledged in session <%= it.sessionId %>";
     
     const result = renderReason(template, data);
-    assert(result === "Custom approval: $(ls) acknowledged in session test-session");
+    assert(result === "Custom skip: $(ls) acknowledged in session test-session");
   });
 
   await t.step("pattern-based rule with eta template", () => {

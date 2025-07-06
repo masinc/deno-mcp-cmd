@@ -189,22 +189,22 @@ export function warnShellExpansion(reason?: string): Rule {
       );
 
       if (hasShellCommand || hasShellArgs) {
-        // If warning is acknowledged, approve the command
+        // If warning is acknowledged, skip the command
         if (
           ctx.toolInput.acknowledgeWarnings?.includes("warn-shell-expansion")
         ) {
-          const approveReason = reason
+          const skipReason = reason
             ? renderReason(
               reason,
               createTemplateData(ctx, {
-                action: "approve",
+                action: "skip",
               }),
             )
             : "Shell expansion warning acknowledged - command allowed but may not work as expected";
 
           return {
-            action: "approve",
-            reason: approveReason,
+            action: "skip",
+            reason: skipReason,
           };
         }
 

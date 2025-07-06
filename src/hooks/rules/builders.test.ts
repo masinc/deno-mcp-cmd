@@ -563,14 +563,14 @@ Deno.test("Shell expansion detection", async (t) => {
   );
 
   await t.step(
-    "warnShellExpansion should approve when warn-shell-expansion is acknowledged",
+    "warnShellExpansion should skip when warn-shell-expansion is acknowledged",
     () => {
       const rule = warnShellExpansion();
 
       const result = rule.condition(
         createContext("$(ls)", [], undefined, ["warn-shell-expansion"]),
       );
-      assert(result?.action === "approve");
+      assert(result?.action === "skip");
       assert(result?.reason?.includes("warning acknowledged"));
     },
   );
