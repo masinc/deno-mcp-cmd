@@ -65,61 +65,112 @@ export const EXAMPLE_USER_RULES_CONFIG: UserRulesConfig = {
 };
 
 /**
- * Security-focused preset configuration
+ * Default preset configuration (matches src/hooks/rules/presets.ts SECURITY_RULES)
  */
-export const SECURITY_PRESET_CONFIG: UserRulesConfig = {
+export const DEFAULT_PRESET_CONFIG: UserRulesConfig = {
   rules: [
+    // Approve safe git commands first (higher priority)
     {
-      name: "block-dangerous-flags",
+      name: "approve-safe-git-commands",
+      kind: "ApproveCommandRule",
+      enabled: true,
+      spec: {
+        command: "git",
+        args: {
+          startsWith: ["status", "log", "show", "diff", "help", "version", "describe", "shortlog", "blame", "grep", "ls-files", "rev-parse"]
+        },
+        reason: "Safe git commands approved for read-only operations",
+      },
+    },
+    // Block directory navigation
+    {
+      name: "block-cd",
+      kind: "BlockCommandRule",
+      enabled: true,
+      spec: {
+        command: "cd",
+        reason: "Directory navigation via cd not allowed",
+      },
+    },
+    // Block shell commands
+    {
+      name: "block-shell-commands",
       kind: "BlockCommandRule",
       enabled: true,
       spec: {
         command: {
-          oneOf: ["rm", "chmod", "chown"],
+          oneOf: ["bash", "sh", "zsh", "fish", "csh", "tcsh", "ksh"],
         },
-        args: {
-          containsAny: ["-f", "--force", "-R", "--recursive"],
-        },
-        reason: "Dangerous file operations with force/recursive flags are blocked",
+        reason: "Shell commands are not allowed for security reasons",
       },
     },
+    // Confirm network commands
     {
-      name: "block-force-recursive-combo",
+      name: "confirm-network-commands",
+      kind: "ConfirmCommandRule",
+      enabled: true,
+      spec: {
+        command: {
+          oneOf: ["curl", "wget", "nc", "netcat"],
+        },
+        reason: "Network commands require confirmation",
+      },
+    },
+    // Block privilege escalation
+    {
+      name: "block-privilege-escalation",
       kind: "BlockCommandRule",
       enabled: true,
       spec: {
         command: {
-          oneOf: ["rm", "cp", "mv"],
+          oneOf: ["sudo", "su", "doas"],
         },
-        args: {
-          containsAll: ["--force", "--recursive"],
-        },
-        reason: "Combination of force and recursive flags is extremely dangerous",
+        reason: "Privilege escalation commands not allowed",
       },
     },
+    // Block operations outside current directory
     {
-      name: "warn-network-access",
+      name: "block-outside-current-directory",
+      kind: "LocationRule",
+      enabled: true,
+      spec: {
+        paths: {
+          outside: "."
+        },
+        action: "block",
+        reason: "Operations outside current directory not allowed",
+      },
+    },
+    // Warn about shell expansion attempts in command
+    {
+      name: "warn-shell-expansion-command",
       kind: "WarningRule",
       enabled: true,
       spec: {
         patterns: {
           command: {
-            regex: "^(curl|wget|nc|ssh|scp|rsync)$",
-          },
+            regex: ".*[$`].*"
+          }
         },
-        warningReason: "Network access detected - verify destination security",
-        acknowledgedAction: "confirm",
-        acknowledgedReason: "Network access verified and approved",
+        warningReason: "Shell expansion syntax detected in command. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.",
+        acknowledgedAction: "skip",
+        acknowledgedReason: "Shell expansion syntax in command acknowledged - proceeding with literal interpretation",
       },
     },
+    // Warn about shell expansion attempts in args
     {
-      name: "confirm-package-installation",
-      kind: "ConditionalRule",
+      name: "warn-shell-expansion-args",
+      kind: "WarningRule",
       enabled: true,
       spec: {
-        condition: "command.includes('install') || command.includes('add') || command.includes('update')",
-        action: "confirm",
-        reason: "Package installation/update requires confirmation",
+        patterns: {
+          args: {
+            regexAny: ".*[$`].*"
+          }
+        },
+        warningReason: "Shell expansion syntax detected in arguments. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.",
+        acknowledgedAction: "skip",
+        acknowledgedReason: "Shell expansion syntax in arguments acknowledged - proceeding with literal interpretation",
       },
     },
   ],
@@ -190,9 +241,9 @@ export const DEVELOPMENT_PRESET_CONFIG: UserRulesConfig = {
  */
 export function getPresetConfig(presetName: string): UserRulesConfig | null {
   switch (presetName) {
-    case "security":
-    case "@mcp-cmd/security-preset":
-      return SECURITY_PRESET_CONFIG;
+    case "default":
+    case "@mcp-cmd/default-preset":
+      return DEFAULT_PRESET_CONFIG;
     case "development":
     case "@mcp-cmd/development-preset":
       return DEVELOPMENT_PRESET_CONFIG;
@@ -208,8 +259,8 @@ export function getPresetConfig(presetName: string): UserRulesConfig | null {
  */
 export function getAvailablePresets(): string[] {
   return [
-    "security",
-    "@mcp-cmd/security-preset", 
+    "default",
+    "@mcp-cmd/default-preset", 
     "development",
     "@mcp-cmd/development-preset",
     "example",
