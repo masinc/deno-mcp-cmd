@@ -1,37 +1,21 @@
 #!/usr/bin/env -S deno run --allow-env --allow-read --allow-write
 
-import { parseArgs } from "@std/cli/parse-args";
+import { Command } from "@cliffy/command";
 import { stringify } from "@std/yaml";
 import { ensureFile, exists } from "@std/fs";
 import { PRESET_CONFIGS } from "../hooks/config/defaults.ts";
+import { UserRulesConfigSchema } from "../hooks/config/schema.ts";
+import * as z from "zod/v4";
 
-interface InitOptions {
-  preset?: string;
-  project?: boolean;
-  user?: boolean;
+interface ConfigOptions {
+  preset: string;
+  output: "project" | "user" | "stdout";
   force?: boolean;
-  help?: boolean;
 }
 
-const HELP_TEXT = `
-mcp-cmd hooks-init - Initialize MCP command hook configuration
-
-USAGE:
-    hooks-init [OPTIONS]
-
-OPTIONS:
-    --preset <name>     Use preset configuration (default: empty)
-                        Available: ${Object.keys(PRESET_CONFIGS).join(", ")}
-    --project           Create project-local configuration (./.mcp-cmd/hooks-rules.yaml)
-    --user              Create user-global configuration (~/.config/@masinc/mcp-cmd/hooks-rules.yaml)
-    --force             Overwrite existing configuration file
-    --help              Show this help message
-
-EXAMPLES:
-    hooks-init --preset default --project
-    hooks-init --preset development --user
-    hooks-init --force --preset example --project
-`;
+interface JsonSchemaOptions {
+  // No options needed - always output to stdout
+}
 
 function expandPath(path: string): string {
   if (path.startsWith("~/")) {
@@ -41,19 +25,20 @@ function expandPath(path: string): string {
   return path;
 }
 
-function getConfigPath(options: InitOptions): string {
-  if (options.project) {
-    return "./.mcp-cmd/hooks-rules.yaml";
+function getConfigPath(options: ConfigOptions): string {
+  switch (options.output) {
+    case "project":
+      return "./.mcp-cmd/hooks-rules.yaml";
+    case "user":
+      return "~/.config/@masinc/mcp-cmd/hooks-rules.yaml";
+    case "stdout":
+      return "stdout";
+    default:
+      throw new Error("Invalid output option");
   }
-
-  if (options.user) {
-    return "~/.config/@masinc/mcp-cmd/hooks-rules.yaml";
-  }
-
-  throw new Error("Must specify either --project or --user");
 }
 
-async function initConfig(options: InitOptions): Promise<void> {
+async function initConfig(options: ConfigOptions): Promise<void> {
   const presetName = options.preset || "empty";
   const config = PRESET_CONFIGS[presetName as keyof typeof PRESET_CONFIGS];
 
@@ -65,28 +50,36 @@ async function initConfig(options: InitOptions): Promise<void> {
     Deno.exit(1);
   }
 
-  const outputPath = expandPath(getConfigPath(options));
+  const outputPath = getConfigPath(options);
+
+  // Generate YAML content with header comment
+  const yamlContent = `# MCP Command Hook Rules Configuration
+# Generated with: hooks-init config --preset ${presetName}
+
+${stringify(config)}`;
+
+  if (options.output === "stdout") {
+    // Output to stdout
+    console.log(yamlContent);
+    return;
+  }
+
+  const expandedPath = expandPath(outputPath);
 
   // Check if file exists and force flag
-  if (await exists(outputPath) && !options.force) {
-    console.error(`Error: Configuration file already exists: ${outputPath}`);
+  if (await exists(expandedPath) && !options.force) {
+    console.error(`Error: Configuration file already exists: ${expandedPath}`);
     console.error("Use --force to overwrite");
     Deno.exit(1);
   }
 
   // Ensure directory exists
-  await ensureFile(outputPath);
-
-  // Generate YAML content with header comment
-  const yamlContent = `# MCP Command Hook Rules Configuration
-# Generated with: hooks-init --preset ${presetName}
-
-${stringify(config)}`;
+  await ensureFile(expandedPath);
 
   // Write configuration file
-  await Deno.writeTextFile(outputPath, yamlContent);
+  await Deno.writeTextFile(expandedPath, yamlContent);
 
-  console.log(`✅ Configuration file created: ${outputPath}`);
+  console.log(`✅ Configuration file created: ${expandedPath}`);
   console.log(`📋 Preset: ${presetName} (${config.rules.length} rules)`);
 
   if (config.rules.length > 0) {
@@ -97,44 +90,85 @@ ${stringify(config)}`;
   }
 }
 
-// Main execution
-if (import.meta.main) {
-  const args = parseArgs(Deno.args, {
-    string: ["preset"],
-    boolean: ["project", "user", "force", "help"],
-    alias: {
-      p: "preset",
-      f: "force",
-      h: "help",
+const configCommand = new Command()
+  .name("config")
+  .description("Initialize hooks configuration file")
+  .option("-p, --preset <preset>", "Configuration preset to use", {
+    default: "empty",
+    value: (value: string) => {
+      if (!Object.keys(PRESET_CONFIGS).includes(value)) {
+        throw new Error(
+          `Unknown preset '${value}'. Available: ${
+            Object.keys(PRESET_CONFIGS).join(", ")
+          }`,
+        );
+      }
+      return value;
     },
+  })
+  .option(
+    "-o, --output <location>",
+    "Output location: project, user, or stdout",
+    {
+      default: "stdout",
+      value: (value: string) => {
+        if (!["project", "user", "stdout"].includes(value)) {
+          throw new Error(
+            `Invalid output location '${value}'. Available: project, user, stdout`,
+          );
+        }
+        return value as "project" | "user" | "stdout";
+      },
+    },
+  )
+  .option("-f, --force", "Overwrite existing configuration file")
+  .action(async (options: ConfigOptions) => {
+    // Output location is already validated by the option parser
+
+    try {
+      await initConfig({
+        preset: options.preset,
+        output: options.output,
+        force: options.force,
+      });
+    } catch (error) {
+      console.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      Deno.exit(1);
+    }
   });
 
-  if (args.help) {
-    console.log(HELP_TEXT);
-    Deno.exit(0);
-  }
+async function generateJsonSchema(_options: JsonSchemaOptions): Promise<void> {
+  // Generate JSON Schema from Zod schema
+  const jsonSchema = z.toJSONSchema(UserRulesConfigSchema, {
+    target: "draft-7",
+  });
 
-  // Validate options
-  if (args.project && args.user) {
-    console.error("Error: Cannot specify both --project and --user");
-    Deno.exit(1);
-  }
+  // Always output to stdout
+  console.log(JSON.stringify(jsonSchema, null, 2));
+}
 
-  if (!args.project && !args.user) {
-    console.error("Error: Must specify either --project or --user");
-    console.error("Use --help for more information");
-    Deno.exit(1);
-  }
+const jsonschemaCommand = new Command()
+  .name("jsonschema")
+  .description("Generate JSON Schema for hooks configuration validation")
+  .action(async () => {
+    await generateJsonSchema({});
+  });
 
-  try {
-    await initConfig({
-      preset: args.preset,
-      project: args.project,
-      user: args.user,
-      force: args.force,
-    });
-  } catch (error) {
-    console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
-    Deno.exit(1);
+const mainCommand = new Command()
+  .name("hooks-init")
+  .description("MCP Command hooks configuration initialization tool")
+  .version("1.0.0")
+  .command("config", configCommand)
+  .command("jsonschema", jsonschemaCommand);
+
+// Main execution
+if (import.meta.main) {
+  // Show help if no arguments provided
+  if (Deno.args.length === 0) {
+    mainCommand.showHelp();
+  } else {
+    await mainCommand.parse(Deno.args);
   }
 }

@@ -162,7 +162,7 @@ This project includes hook scripts for use with Claude Code:
 
 - **hooks-bash.ts**: Blocks Bash tool usage and redirects to MCP cmd tool
 - **hooks-cmd.ts**: Controls MCP cmd tool usage with command filtering
-- **hooks-init.ts**: Initialize hook configuration files with presets
+- **hooks-init.ts**: Initialize hook configuration files with presets and generate JSON Schema
 
 ### Initializing Hook Configuration
 
@@ -170,10 +170,16 @@ Use `hooks-init.ts` to create hook configuration files with predefined security 
 
 ```bash
 # Create project-local configuration with default security preset
-deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --preset default --project
+deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts config --output project --preset default
 
 # Create user-global configuration with development preset
-deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --preset development --user
+deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts config --output user --preset development
+
+# Output configuration to stdout (default)
+deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts config --preset default
+
+# Generate JSON Schema for configuration validation
+deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts jsonschema
 
 # View available options
 deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --help
@@ -188,8 +194,9 @@ deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --help
 
 #### Configuration Locations
 
-- **Project-local**: `./.mcp-cmd/hooks-rules.yaml` (use `--project`)
-- **User-global**: `~/.config/@masinc/mcp-cmd/hooks-rules.yaml` (use `--user`)
+- **Project-local**: `./.mcp-cmd/hooks-rules.yaml` (use `--output project`)
+- **User-global**: `~/.config/@masinc/mcp-cmd/hooks-rules.yaml` (use `--output user`)
+- **Stdout**: Output to console for piping or manual review (use `--output stdout` or omit for default)
 
 The hook system automatically searches for configuration files in this order:
 1. `~/.config/@masinc/mcp-cmd/hooks-rules.yaml`

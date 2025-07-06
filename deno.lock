@@ -1,17 +1,23 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@logtape/file@^1.0.2": "1.0.2",
-    "jsr:@logtape/logtape@^1.0.2": "1.0.2",
+    "jsr:@cliffy/command@^1.0.0-rc.8": "1.0.0-rc.8",
+    "jsr:@cliffy/flags@1.0.0-rc.8": "1.0.0-rc.8",
+    "jsr:@cliffy/internal@1.0.0-rc.8": "1.0.0-rc.8",
+    "jsr:@cliffy/table@1.0.0-rc.8": "1.0.0-rc.8",
+    "jsr:@logtape/file@^1.0.2": "1.0.4",
+    "jsr:@logtape/logtape@^1.0.2": "1.0.4",
+    "jsr:@logtape/logtape@^1.0.4": "1.0.4",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@1": "1.0.13",
-    "jsr:@std/cli@^1.0.20": "1.0.20",
     "jsr:@std/encoding@^1.0.10": "1.0.10",
     "jsr:@std/flags@*": "0.224.0",
+    "jsr:@std/fmt@~1.0.2": "1.0.8",
     "jsr:@std/fs@^1.0.19": "1.0.19",
     "jsr:@std/internal@^1.0.6": "1.0.9",
     "jsr:@std/internal@^1.0.9": "1.0.9",
     "jsr:@std/path@^1.1.1": "1.1.1",
+    "jsr:@std/text@~1.0.7": "1.0.15",
     "jsr:@std/yaml@^1.0.8": "1.0.8",
     "npm:@hono/mcp@0.1": "0.1.0_@modelcontextprotocol+sdk@1.15.0__express@5.1.0__zod@3.25.74_hono@4.8.4",
     "npm:@libsql/client@*": "0.15.9",
@@ -25,14 +31,48 @@
     "npm:zod@^3.25.74": "3.25.74"
   },
   "jsr": {
+    "@cliffy/command@1.0.0-rc.8": {
+      "integrity": "758147790797c74a707e5294cc7285df665422a13d2a483437092ffce40b5557",
+      "dependencies": [
+        "jsr:@cliffy/flags",
+        "jsr:@cliffy/internal",
+        "jsr:@cliffy/table",
+        "jsr:@std/fmt",
+        "jsr:@std/text"
+      ]
+    },
+    "@cliffy/flags@1.0.0-rc.8": {
+      "integrity": "0f1043ce6ef037ba1cb5fe6b1bcecb25dc2f29371a1c17f278ab0f45e4b6f46c",
+      "dependencies": [
+        "jsr:@std/text"
+      ]
+    },
+    "@cliffy/internal@1.0.0-rc.8": {
+      "integrity": "34cdf2fad9b084b5aed493b138d573f52d4e988767215f7460daf0b918ff43d8"
+    },
+    "@cliffy/table@1.0.0-rc.8": {
+      "integrity": "8bbcdc2ba5e0061b4b13810a24e6f5c6ab19c09f0cce9eb691ccd76c7c6c9db5",
+      "dependencies": [
+        "jsr:@std/fmt"
+      ]
+    },
     "@logtape/file@1.0.2": {
       "integrity": "5f8c7f64ff9d4604f3d2c183507254265ed496be7a84948934f5585d36aec35a",
       "dependencies": [
-        "jsr:@logtape/logtape"
+        "jsr:@logtape/logtape@^1.0.2"
+      ]
+    },
+    "@logtape/file@1.0.4": {
+      "integrity": "80f49feb4826fa748ae3ebd1eaf2fa7f23f1820c84d5402a1f7de76f529464e4",
+      "dependencies": [
+        "jsr:@logtape/logtape@^1.0.4"
       ]
     },
     "@logtape/logtape@1.0.2": {
       "integrity": "b1a429f37464c1500dc4b0f05548a2e4782790d227754b781775f782a4038ef4"
+    },
+    "@logtape/logtape@1.0.4": {
+      "integrity": "6ada87764d995b1033c352a17fd9e20b217f3672083bc2d8debe356eac03fe10"
     },
     "@std/assert@0.224.0": {
       "integrity": "8643233ec7aec38a940a8264a6e3eed9bfa44e7a71cc6b3c8874213ff401967f"
@@ -43,9 +83,6 @@
         "jsr:@std/internal@^1.0.6"
       ]
     },
-    "@std/cli@1.0.20": {
-      "integrity": "a8c384a2c98cec6ec6a2055c273a916e2772485eb784af0db004c5ab8ba52333"
-    },
     "@std/encoding@1.0.10": {
       "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
     },
@@ -54,6 +91,9 @@
       "dependencies": [
         "jsr:@std/assert@0.224"
       ]
+    },
+    "@std/fmt@1.0.8": {
+      "integrity": "71e1fc498787e4434d213647a6e43e794af4fd393ef8f52062246e06f7e372b7"
     },
     "@std/fs@1.0.19": {
       "integrity": "051968c2b1eae4d2ea9f79a08a3845740ef6af10356aff43d3e2ef11ed09fb06",
@@ -70,6 +110,9 @@
       "dependencies": [
         "jsr:@std/internal@^1.0.9"
       ]
+    },
+    "@std/text@1.0.15": {
+      "integrity": "91f5cc1e12779a3d95f1be34e763f9c28a75a078b7360e6fcaef0d8d9b1e3e7f"
     },
     "@std/yaml@1.0.8": {
       "integrity": "90b8aab62995e929fa0ea5f4151c287275b63e321ac375c35ff7406ca60c169d"
@@ -754,10 +797,10 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@cliffy/command@^1.0.0-rc.8",
       "jsr:@logtape/file@^1.0.2",
       "jsr:@logtape/logtape@^1.0.2",
       "jsr:@std/assert@1",
-      "jsr:@std/cli@^1.0.20",
       "jsr:@std/encoding@^1.0.10",
       "jsr:@std/fs@^1.0.19",
       "jsr:@std/path@^1.1.1",
