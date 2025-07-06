@@ -28,6 +28,7 @@ type InsertOutputParams = {
   stderrIsEncoded?: boolean;
   status?: "running" | "completed" | "failed";
   exitCode?: number | null;
+  cwd: string;
 };
 
 export async function insertOutput(
@@ -45,6 +46,7 @@ export async function insertOutput(
       stderrIsEncoded: params.stderrIsEncoded ?? false,
       status: params.status ?? "running",
       exitCode: params.exitCode ?? null,
+      cwd: params.cwd,
       createdAt,
     });
 
@@ -65,6 +67,7 @@ type OutputResult = {
   stderrIsEncoded: boolean;
   status: "running" | "completed" | "failed";
   exitCode: number | null;
+  cwd: string;
   createdAt: string;
 };
 
@@ -92,6 +95,7 @@ export async function getOutputById(
       stderrIsEncoded: output.stderrIsEncoded,
       status: output.status,
       exitCode: output.exitCode,
+      cwd: output.cwd,
       createdAt: output.createdAt,
     };
   } catch (error) {

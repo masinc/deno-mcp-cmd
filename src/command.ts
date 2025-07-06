@@ -7,8 +7,20 @@ import {
 import type { CommandStatus, OutputId } from "./db/types.ts";
 import { getWorkerPool, terminateWorkerPool } from "./workers/worker-pool.ts";
 import type { CommandOptions, TaskResult } from "./workers/types.ts";
+import { homedir } from "node:os";
+import { resolve } from "@std/path";
 
 export type { CommandOptions };
+
+// チルダ展開とパス正規化
+function normalizePath(path: string): string {
+  if (path.startsWith("~/")) {
+    return resolve(homedir(), path.slice(2));
+  } else if (path === "~") {
+    return homedir();
+  }
+  return resolve(path);
+}
 
 // ワーカープールベースのコマンド実行
 export async function runCommand(
@@ -17,6 +29,14 @@ export async function runCommand(
 ): Promise<TaskResult> {
   const id = createOutputId();
 
+  // cwdパスの正規化（チルダ展開 + パス解決）
+  const normalizedOptions = options
+    ? {
+      ...options,
+      cwd: options.cwd ? normalizePath(options.cwd) : options.cwd,
+    }
+    : options;
+
   // 初期状態でDBレコード作成
   await insertOutput({
     id,
@@ -24,6 +44,7 @@ export async function runCommand(
     stderr: "",
     status: "running",
     exitCode: null,
+    cwd: normalizedOptions?.cwd || Deno.cwd(),
   });
 
   try {
@@ -32,8 +53,8 @@ export async function runCommand(
     const result = await workerPool.executeCommand(
       id,
       command,
-      options?.args,
-      options,
+      normalizedOptions?.args,
+      normalizedOptions,
     );
 
     return result;

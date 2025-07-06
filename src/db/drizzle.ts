@@ -1,20 +1,22 @@
 import { drizzle } from "drizzle-orm/libsql";
-import { createClient } from "npm:@libsql/client/node";
+import { type Client, createClient } from "npm:@libsql/client/node";
 import { outputs } from "./schema.ts";
 import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { homedir } from "node:os";
 let db: ReturnType<typeof drizzle> | null = null;
 
-export async function initOrGetDrizzleDb(options?: { inMemory?: boolean; reset?: boolean }) {
+export async function initOrGetDrizzleDb(
+  options?: { inMemory?: boolean; reset?: boolean },
+) {
   if (options?.reset) {
     db = null;
   }
-  
+
   if (db) return db;
 
   let client;
-  
+
   if (options?.inMemory) {
     // インメモリDB使用
     client = createClient({
@@ -33,9 +35,14 @@ export async function initOrGetDrizzleDb(options?: { inMemory?: boolean; reset?:
     });
   }
 
-  db = drizzle(client);
+  await initDatabase(client);
 
-  // テーブル作成
+  db = drizzle(client);
+  return db;
+}
+
+async function initDatabase(client: Client) {
+  // テーブルが存在しない場合は作成
   await client.execute(`
     CREATE TABLE IF NOT EXISTS outputs (
       id TEXT PRIMARY KEY,
@@ -45,11 +52,10 @@ export async function initOrGetDrizzleDb(options?: { inMemory?: boolean; reset?:
       stderrIsEncoded INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'running',
       exitCode INTEGER DEFAULT NULL,
+      cwd TEXT NOT NULL,
       createdAt TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+    )
   `);
-
-  return db;
 }
 
 export { outputs };

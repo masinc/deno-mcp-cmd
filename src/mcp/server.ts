@@ -39,8 +39,11 @@ export async function createMcpServer(): Promise<McpServer> {
       stdinForOutput: OutputIdSchema.optional().describe(
         "9-digit numeric output ID of a previous command's output to use as stdin for this command. This enables command chaining - the stdout from the referenced command will be fed into this command's stdin. Cannot be used together with stdin.",
       ),
+      cwd: z.string().optional().describe(
+        "Working directory for the command execution. If not provided, uses the current working directory.",
+      ),
     },
-  }, async ({ command, args, stdin, stdinForOutput }) => {
+  }, async ({ command, args, stdin, stdinForOutput, cwd }) => {
     const stdinContent = await (async () => {
       if (stdin && stdinForOutput) {
         throw new Error(
@@ -74,7 +77,7 @@ export async function createMcpServer(): Promise<McpServer> {
 
     const result = await runCommand(command, {
       args: args,
-      cwd: Deno.cwd(),
+      cwd: cwd || Deno.cwd(),
       stdin: stdinContent,
     });
 
@@ -126,6 +129,7 @@ export async function createMcpServer(): Promise<McpServer> {
         content: output.stderr,
         isEncoded: output.stderrIsEncoded,
       },
+      cwd: output.cwd,
       createdAt: output.createdAt,
     };
 

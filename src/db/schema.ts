@@ -13,6 +13,7 @@ export const outputs = sqliteTable("outputs", {
   status: text("status", { enum: ["running", "completed", "failed"] }).notNull()
     .default("running"),
   exitCode: integer("exitCode"),
+  cwd: text("cwd").notNull(),
   createdAt: text("createdAt").notNull().default("datetime('now')"),
 });
 
