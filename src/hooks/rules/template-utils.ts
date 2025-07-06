@@ -9,7 +9,12 @@ import { Eta } from "eta";
 // Create eta instance for rendering templates
 const eta = new Eta();
 
-// Helper function to render eta templates for reasons with strong typing
+/**
+ * Renders an Eta template with rule template data and strong typing
+ * @param template - The Eta template string
+ * @param data - Template data conforming to RuleTemplateData schema
+ * @returns Rendered string or original template if rendering fails
+ */
 export function renderReason(template: string, data: RuleTemplateData): string {
   try {
     // Validate template data with Zod
@@ -22,12 +27,21 @@ export function renderReason(template: string, data: RuleTemplateData): string {
   }
 }
 
-// Helper function to create standardized warning messages
+/**
+ * Creates standardized warning messages with acknowledgment instructions
+ * @param ruleName - The name of the rule generating the warning
+ * @param description - The warning description
+ * @returns Formatted warning message with acknowledgment instructions
+ */
 export function createWarningReason(ruleName: string, description: string): string {
   return `${description}\n\nTo proceed anyway, add acknowledgeWarnings: ["${ruleName}"] to your request.`;
 }
 
-// Helper function to get appropriate verb for action
+/**
+ * Converts a rule action to its corresponding verb form
+ * @param action - The rule action
+ * @returns The verb form of the action
+ */
 export function getActionVerb(action: RuleAction): string {
   switch (action) {
     case "block":
@@ -43,7 +57,12 @@ export function getActionVerb(action: RuleAction): string {
   }
 }
 
-// Helper function to create template data from context
+/**
+ * Creates template data from rule context with optional additional data
+ * @param ctx - The rule context
+ * @param additionalData - Additional data to merge into the template data
+ * @returns Complete template data object with auto-generated fields
+ */
 export function createTemplateData(
   ctx: RuleContext,
   additionalData: Partial<RuleTemplateData> = {},

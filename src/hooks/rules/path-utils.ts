@@ -1,10 +1,10 @@
 import { relative, resolve } from "@std/path";
 
 /**
- * パスがカレントディレクトリ以下かを確認する
- * @param targetPath 確認したいパス
- * @param currentDir カレントディレクトリ（未指定時はprocess.cwd()）
- * @returns カレントディレクトリ以下の場合true
+ * Checks if a path is within the current directory
+ * @param targetPath - The path to check
+ * @param currentDir - The current directory (defaults to Deno.cwd())
+ * @returns true if the path is within the current directory
  */
 export function isWithinCurrentDirectory(
   targetPath: string,
@@ -12,36 +12,36 @@ export function isWithinCurrentDirectory(
 ): boolean {
   const cwd = currentDir || Deno.cwd();
 
-  // 絶対パスに変換
+  // Convert to absolute paths
   const absoluteTarget = resolve(cwd, targetPath);
   const absoluteCwd = resolve(cwd);
 
-  // 相対パスを計算
+  // Calculate relative path
   const relativePath = relative(absoluteCwd, absoluteTarget);
 
-  // ".." で始まる場合は親ディレクトリに向かっている
-  // 絶対パスで始まる場合も外部パス
+  // If it starts with "..", it's going to parent directory
+  // If it starts with absolute path, it's also external
   return !relativePath.startsWith("..") && !relativePath.startsWith("/");
 }
 
 /**
- * 引数からパスを抽出する（オプション引数も含む）
- * @param args コマンド引数
- * @returns 抽出されたパス一覧
+ * Extracts paths from command arguments (including option arguments)
+ * @param args - Command arguments
+ * @returns Array of extracted paths
  */
 export function extractPathsFromArgs(args: string[]): string[] {
   const paths: string[] = [];
 
   for (const arg of args) {
     if (arg.startsWith("-")) {
-      // 全ての = 含むオプションをチェック
+      // Check all options containing =
       const generalPattern = /^-[^=]*=(.+)$/;
       const match = arg.match(generalPattern);
       if (match && isPathLike(match[1])) {
         paths.push(match[1]);
       }
     } else {
-      // 通常の引数でパスっぽいもの
+      // Regular arguments that look like paths
       if (isPathLike(arg)) {
         paths.push(arg);
       }
@@ -52,9 +52,9 @@ export function extractPathsFromArgs(args: string[]): string[] {
 }
 
 /**
- * 文字列がパスっぽいかを判定
- * @param str 判定する文字列
- * @returns パスっぽい場合true
+ * Determines if a string looks like a path
+ * @param str - The string to check
+ * @returns true if the string looks like a path
  */
 function isPathLike(str: string): boolean {
   return (
@@ -65,15 +65,15 @@ function isPathLike(str: string): boolean {
     str.startsWith("~") ||
     str.startsWith("./") ||
     str.startsWith("../") ||
-    str.includes(".") // ファイル拡張子を含む
+    str.includes(".") // Contains file extension
   );
 }
 
 /**
- * コマンド引数からパスを抽出してカレントディレクトリ以下かチェック
- * @param args コマンド引数
- * @param currentDir カレントディレクトリ
- * @returns すべてのパスがカレントディレクトリ以下の場合true
+ * Extracts paths from command arguments and checks if all are within current directory
+ * @param args - Command arguments
+ * @param currentDir - The current directory
+ * @returns true if all paths are within the current directory
  */
 export function isAllPathsWithinCurrentDirectory(
   args: string[],

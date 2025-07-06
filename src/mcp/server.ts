@@ -10,6 +10,22 @@ import {
 import { OutputIdSchema } from "../db/schema.ts";
 import { decodeBase64 } from "@std/encoding";
 
+/**
+ * Creates and configures an MCP (Model Context Protocol) server for command execution
+ * 
+ * The server provides two main tools:
+ * 1. runCommand - Execute shell commands with various options
+ * 2. getCommand - Retrieve command execution results
+ * 
+ * Features:
+ * - Command execution with stdout/stderr capture
+ * - Binary data support with base64 encoding
+ * - Command chaining through output IDs
+ * - Working directory and stdin support
+ * - Warning acknowledgment system
+ * 
+ * @returns Promise resolving to configured MCP server instance
+ */
 export async function createMcpServer(): Promise<McpServer> {
   await deleteExpiredOutputs();
 
@@ -59,7 +75,7 @@ export async function createMcpServer(): Promise<McpServer> {
         acknowledgeWarnings: _acknowledgeWarnings,
       },
     ) => {
-      // acknowledgeWarnings はルールチェックでのみ使用し、実際のコマンド実行には渡さない
+      // acknowledgeWarnings is only used for rule checking, not passed to actual command execution
       const stdinContent = await (async () => {
         if (stdin && stdinForOutput) {
           throw new Error(

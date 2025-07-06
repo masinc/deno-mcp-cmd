@@ -14,7 +14,13 @@ import {
  * Simple rule builders for common patterns
  */
 
-// Unified command-based rules
+/**
+ * Creates a rule based on command matching with specified action
+ * @param action - The action to take when the rule matches
+ * @param commands - Single command or array of commands to match
+ * @param reason - Optional custom reason template (uses Eta templating)
+ * @returns A rule that matches the specified commands
+ */
 export function createCommandRule(
   action: RuleAction,
   commands: string | string[],
@@ -47,15 +53,32 @@ export function createCommandRule(
   };
 }
 
-// Convenience functions for backward compatibility and readability
+/**
+ * Creates a rule that blocks a specific command
+ * @param command - The command to block
+ * @param reason - Optional custom reason template
+ * @returns A rule that blocks the specified command
+ */
 export function blockCommand(command: string, reason?: string): Rule {
   return createCommandRule("block", command, reason);
 }
 
+/**
+ * Creates a rule that requires confirmation for a specific command
+ * @param command - The command requiring confirmation
+ * @param reason - Optional custom reason template
+ * @returns A rule that requires confirmation for the specified command
+ */
 export function confirmCommand(command: string, reason?: string): Rule {
   return createCommandRule("confirm", command, reason);
 }
 
+/**
+ * Creates a rule that approves a specific command
+ * @param command - The command to approve
+ * @param reason - Optional custom reason template
+ * @returns A rule that approves the specified command
+ */
 export function approveCommand(command: string, reason?: string): Rule {
   return createCommandRule("approve", command, reason);
 }
@@ -73,7 +96,13 @@ export function approveCommands(commands: string[], reason?: string): Rule {
 }
 
 
-// Flag-based rules
+/**
+ * Creates a rule that blocks a command when used with dangerous flags
+ * @param command - The command to monitor
+ * @param dangerousFlags - Array of flags that make the command dangerous
+ * @param reason - Optional custom reason template
+ * @returns A rule that blocks the command when dangerous flags are present
+ */
 export function blockCommandWithFlags(
   command: string,
   dangerousFlags: string[],
@@ -113,7 +142,11 @@ export function blockCommandWithFlags(
   };
 }
 
-// Path-based rules
+/**
+ * Creates a rule that blocks commands operating outside the current directory
+ * @param reason - Optional custom reason template
+ * @returns A rule that blocks operations outside the current directory
+ */
 export function blockOutsideCurrentDirectory(reason?: string): Rule {
   return {
     name: "block-outside-current-directory",
@@ -143,7 +176,14 @@ export function blockOutsideCurrentDirectory(reason?: string): Rule {
   };
 }
 
-// Generic rule builder for custom conditions
+/**
+ * Creates a custom rule with a user-defined condition function
+ * @param name - The name of the rule
+ * @param action - The action to take when the rule matches
+ * @param condition - Function that determines if the rule should trigger
+ * @param reason - Optional custom reason template
+ * @returns A rule with custom condition logic
+ */
 export function createRule(
   name: string,
   action: RuleAction,
@@ -172,7 +212,12 @@ export function createRule(
   };
 }
 
-// Shell command execution detection rule with warning
+/**
+ * Creates a rule that warns about shell expansion syntax in commands
+ * Returns 'skip' action when warning is acknowledged via acknowledgeWarnings
+ * @param reason - Optional custom reason template for acknowledgment case
+ * @returns A rule that detects and warns about shell expansion patterns
+ */
 export function warnShellExpansion(reason?: string): Rule {
   return {
     name: "warn-shell-expansion",
@@ -221,33 +266,56 @@ export function warnShellExpansion(reason?: string): Rule {
   };
 }
 
-// Keep old functions for backward compatibility
+/**
+ * @deprecated Use warnShellExpansion instead
+ * Creates a rule that warns about shell expansion syntax (backward compatibility)
+ */
 export function warnShellExecution(reason?: string): Rule {
   return warnShellExpansion(reason);
 }
 
+/**
+ * @deprecated Use warnShellExpansion instead
+ * Creates a rule that warns about shell expansion syntax (backward compatibility)
+ */
 export function blockShellExecution(reason?: string): Rule {
   return warnShellExpansion(reason);
 }
 
-// Pattern-based command matching types
+/**
+ * Pattern for matching command arguments with various matching strategies
+ */
 type ArgPattern =
-  | string // 完全一致
-  | (string | { startsWith: string } | { regex: string })[] // いずれかにマッチ
-  | "*" // 任意の1つの引数
-  | "**" // 任意の数の引数（0個以上）
-  | { startsWith: string } // 前方一致
-  | { regex: string }; // 正規表現マッチ (文字列パターン)
+  | string // Exact match
+  | (string | { startsWith: string } | { regex: string })[] // Match any in array
+  | "*" // Any single argument
+  | "**" // Any number of arguments (0 or more)
+  | { startsWith: string } // Prefix match
+  | { regex: string }; // Regular expression match (string pattern)
 
+/**
+ * Pattern definition for sophisticated command and argument matching
+ */
 type CommandPattern = {
+  /** Unique name for the pattern rule */
   name: string;
+  /** Command pattern: exact string, array of strings, or regex pattern */
   cmd: string | string[] | { regex: string };
+  /** Optional array of argument patterns to match */
   args?: ArgPattern[];
+  /** Action to take when pattern matches */
   action: RuleAction;
+  /** Reason template (supports Eta templating) */
   reason: string;
 };
 
-// Pattern matching helper function
+/**
+ * Determines if a command and its arguments match a given pattern
+ * @param command - The command to check
+ * @param args - Command arguments to check
+ * @param pattern - The pattern to match against
+ * @returns true if the command and arguments match the pattern
+ */
 function matchesPattern(
   command: string,
   args: string[],
@@ -334,7 +402,11 @@ function matchesPattern(
   return true;
 }
 
-// Create rule from command pattern
+/**
+ * Creates a rule based on sophisticated pattern matching for commands and arguments
+ * @param pattern - Pattern definition including command patterns, argument patterns, action, and reason
+ * @returns A rule that matches commands based on the specified patterns
+ */
 export function createPatternBasedRule(pattern: CommandPattern): Rule {
   return {
     name: pattern.name,

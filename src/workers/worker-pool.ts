@@ -12,6 +12,12 @@ import type {
   WorkerResponse,
 } from "./types.ts";
 
+/**
+ * Worker pool for managing concurrent command execution
+ * 
+ * Manages a pool of worker threads to execute shell commands concurrently.
+ * Handles task queuing, worker lifecycle, and result tracking.
+ */
 export class CommandWorkerPool {
   private workers: WorkerInstance[] = [];
   private queue: QueuedTask[] = [];
@@ -19,8 +25,12 @@ export class CommandWorkerPool {
   private currentWorkers = 0;
   private taskResults = new Map<OutputId, TaskCompletionResult>();
 
+  /**
+   * Creates a new CommandWorkerPool instance
+   * @param maxWorkers - Maximum number of workers (defaults to half of CPU cores)
+   */
   constructor(maxWorkers?: number) {
-    // CPU コア数に基づいてワーカー数を決定
+    // Determine worker count based on CPU cores
     this.maxWorkers = maxWorkers ||
       Math.max(1, Math.floor((navigator.hardwareConcurrency || 4) / 2));
     console.log(
@@ -28,6 +38,15 @@ export class CommandWorkerPool {
     );
   }
 
+  /**
+   * Executes a command using the worker pool
+   * 
+   * @param id - Unique output ID for tracking
+   * @param command - Command to execute
+   * @param args - Optional command arguments
+   * @param options - Optional execution options
+   * @returns Promise resolving to task result
+   */
   executeCommand(
     id: OutputId,
     command: string,
@@ -49,13 +68,16 @@ export class CommandWorkerPool {
     });
   }
 
+  /**
+   * Processes the task queue by assigning tasks to available workers
+   */
   private processQueue(): void {
     if (this.queue.length === 0) return;
 
-    // 空いているワーカーを探す
+    // Find an available worker
     let worker = this.workers.find((w) => !w.busy);
 
-    // 空いているワーカーがない場合、新しいワーカーを作成
+    // Create a new worker if none available and under limit
     if (!worker && this.currentWorkers < this.maxWorkers) {
       try {
         worker = this.createWorker();
@@ -65,13 +87,13 @@ export class CommandWorkerPool {
       }
     }
 
-    if (!worker) return; // 全てのワーカーが使用中
+    if (!worker) return; // All workers are busy
 
     const task = this.queue.shift()!;
     worker.busy = true;
     worker.currentTask = task.id;
 
-    // ワーカーにタスクを送信
+    // Send task to worker
     worker.worker.postMessage({
       type: "execute",
       id: task.id,
@@ -80,10 +102,15 @@ export class CommandWorkerPool {
       options: task.options,
     } as WorkerMessage);
 
-    // タスクの完了を追跡
+    // Track task completion
     this.setupTaskHandlers(worker, task);
   }
 
+  /**
+   * Sets up event handlers for a worker task
+   * @param worker - Worker instance handling the task
+   * @param task - Task being processed
+   */
   private setupTaskHandlers(worker: WorkerInstance, task: QueuedTask): void {
     const onMessage = (event: MessageEvent<WorkerResponse>) => {
       const message = event.data;
@@ -145,13 +172,13 @@ export class CommandWorkerPool {
     worker.worker.addEventListener("message", onMessage);
     worker.worker.addEventListener("error", onError);
 
-    // タスク完了時のクリーンアップ
+    // Cleanup on task completion
     const cleanup = () => {
       worker.worker.removeEventListener("message", onMessage);
       worker.worker.removeEventListener("error", onError);
     };
 
-    // 完了時にクリーンアップを実行
+    // Execute cleanup on completion
     const originalFinish = this.finishTask.bind(this);
     this.finishTask = (w: WorkerInstance) => {
       if (w === worker) {
@@ -162,14 +189,22 @@ export class CommandWorkerPool {
     };
   }
 
+  /**
+   * Marks a task as finished and processes the next task in queue
+   * @param worker - Worker instance that finished the task
+   */
   private finishTask(worker: WorkerInstance): void {
     worker.busy = false;
     worker.currentTask = undefined;
 
-    // 次のタスクを処理
+    // Process next task in queue
     this.processQueue();
   }
 
+  /**
+   * Creates a new worker instance with proper permissions and error handling
+   * @returns New worker instance
+   */
   private createWorker(): WorkerInstance {
     const workerUrl = new URL("./command-worker.ts", import.meta.url);
 
@@ -192,7 +227,7 @@ export class CommandWorkerPool {
       id: this.currentWorkers++,
     };
 
-    // ワーカーのエラーハンドリング
+    // Worker error handling
     worker.onerror = (error) => {
       console.error(`Worker ${workerInstance.id} error:`, error);
       this.removeWorker(workerInstance);
@@ -211,6 +246,10 @@ export class CommandWorkerPool {
     return workerInstance;
   }
 
+  /**
+   * Removes a worker from the pool
+   * @param workerInstance - Worker instance to remove
+   */
   private removeWorker(workerInstance: WorkerInstance): void {
     const index = this.workers.indexOf(workerInstance);
     if (index !== -1) {
@@ -221,6 +260,11 @@ export class CommandWorkerPool {
     }
   }
 
+  /**
+   * Handles streaming data from worker and updates database
+   * @param id - Output ID for the command
+   * @param data - Stream data to process
+   */
   private async handleStreamData(
     id: OutputId,
     data: StreamData,
@@ -232,8 +276,13 @@ export class CommandWorkerPool {
     }
   }
 
+  /**
+   * Cancels a command by removing it from queue or signaling running worker
+   * @param id - Output ID of the command to cancel
+   * @returns true if command was found and cancelled, false otherwise
+   */
   cancelCommand(id: OutputId): boolean {
-    // キューからタスクを削除
+    // Remove task from queue
     const queueIndex = this.queue.findIndex((task) => task.id === id);
     if (queueIndex !== -1) {
       const task = this.queue.splice(queueIndex, 1)[0];
@@ -241,7 +290,7 @@ export class CommandWorkerPool {
       return true;
     }
 
-    // 実行中のタスクをキャンセル
+    // Cancel running task
     const worker = this.workers.find((w) => w.currentTask === id);
     if (worker) {
       worker.worker.postMessage({
@@ -254,10 +303,19 @@ export class CommandWorkerPool {
     return false;
   }
 
+  /**
+   * Gets the completion result for a task
+   * @param id - Output ID of the task
+   * @returns Task completion result or undefined if not found
+   */
   getTaskResult(id: OutputId): TaskCompletionResult | undefined {
     return this.taskResults.get(id);
   }
 
+  /**
+   * Gets the current status of the worker pool
+   * @returns Current pool status including worker counts and queue size
+   */
   getStatus(): WorkerPoolStatus {
     return {
       totalWorkers: this.workers.length,
@@ -267,10 +325,14 @@ export class CommandWorkerPool {
     };
   }
 
+  /**
+   * Terminates all workers and cleans up resources
+   * @returns Promise that resolves when termination is complete
+   */
   async terminate(): Promise<void> {
     console.log("Terminating worker pool...");
 
-    // 全てのワーカーを終了
+    // Terminate all workers
     await Promise.all(
       this.workers.map((w) => {
         try {
@@ -283,12 +345,12 @@ export class CommandWorkerPool {
       }),
     );
 
-    // 待機中のタスクを拒否
+    // Reject pending tasks
     this.queue.forEach((task) => {
       task.reject(new Error("Worker pool terminated"));
     });
 
-    // 状態をクリア
+    // Clear state
     this.workers = [];
     this.queue = [];
     this.currentWorkers = 0;
@@ -297,6 +359,11 @@ export class CommandWorkerPool {
     console.log("Worker pool terminated");
   }
 
+  /**
+   * Updates database with task completion status
+   * @param id - Output ID of the completed task
+   * @param exitCode - Exit code of the completed command
+   */
   private async updateTaskCompletion(
     id: OutputId,
     exitCode?: number,
@@ -312,6 +379,11 @@ export class CommandWorkerPool {
     }
   }
 
+  /**
+   * Updates database with task error status
+   * @param id - Output ID of the failed task
+   * @param error - Error message
+   */
   private async updateTaskError(id: OutputId, error?: string): Promise<void> {
     try {
       await updateOutput({
@@ -326,9 +398,13 @@ export class CommandWorkerPool {
   }
 }
 
-// シングルトンインスタンス
+// Singleton instance
 let workerPool: CommandWorkerPool | null = null;
 
+/**
+ * Gets the singleton worker pool instance, creating it if necessary
+ * @returns The worker pool instance
+ */
 export function getWorkerPool(): CommandWorkerPool {
   if (!workerPool) {
     workerPool = new CommandWorkerPool();
@@ -336,6 +412,10 @@ export function getWorkerPool(): CommandWorkerPool {
   return workerPool;
 }
 
+/**
+ * Terminates the singleton worker pool if it exists
+ * @returns Promise that resolves when termination is complete
+ */
 export async function terminateWorkerPool(): Promise<void> {
   if (workerPool) {
     await workerPool.terminate();

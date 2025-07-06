@@ -12,7 +12,11 @@ import { resolve } from "@std/path";
 
 export type { CommandOptions };
 
-// チルダ展開とパス正規化
+/**
+ * Normalizes a path by expanding tilde (~) and resolving relative paths
+ * @param path - The path to normalize
+ * @returns The normalized absolute path
+ */
 function normalizePath(path: string): string {
   if (path.startsWith("~/")) {
     return resolve(homedir(), path.slice(2));
@@ -22,14 +26,24 @@ function normalizePath(path: string): string {
   return resolve(path);
 }
 
-// ワーカープールベースのコマンド実行
+/**
+ * Executes a shell command using the worker pool with database tracking
+ * 
+ * Creates a database record for tracking execution progress and manages
+ * the command lifecycle through the worker pool system.
+ * 
+ * @param command - The command to execute
+ * @param options - Optional command execution options (args, cwd, stdin)
+ * @returns Promise resolving to task result with execution ID and status
+ * @throws Error if command execution fails
+ */
 export async function runCommand(
   command: string,
   options?: CommandOptions,
 ): Promise<TaskResult> {
   const id = createOutputId();
 
-  // cwdパスの正規化（チルダ展開 + パス解決）
+  // Normalize cwd path (tilde expansion + path resolution)
   const normalizedOptions = options
     ? {
       ...options,
@@ -37,7 +51,7 @@ export async function runCommand(
     }
     : options;
 
-  // 初期状態でDBレコード作成
+  // Create initial database record
   await insertOutput({
     id,
     stdout: "",
@@ -48,7 +62,7 @@ export async function runCommand(
   });
 
   try {
-    // ワーカープールでコマンド実行
+    // Execute command using worker pool
     const workerPool = getWorkerPool();
     const result = await workerPool.executeCommand(
       id,
@@ -61,7 +75,7 @@ export async function runCommand(
   } catch (error) {
     console.error(`Command execution failed for ID ${id}:`, error);
 
-    // エラー時はfailed状態に更新
+    // Update to failed status on error
     await updateOutput({
       id,
       stderr: error instanceof Error ? error.message : "Unknown error",
@@ -73,7 +87,15 @@ export async function runCommand(
   }
 }
 
-// コマンドキャンセル機能
+/**
+ * Cancels a running command by its output ID
+ * 
+ * Attempts to cancel the command execution and updates the database
+ * with cancellation status.
+ * 
+ * @param id - The output ID of the command to cancel
+ * @returns Promise resolving to true if command was cancelled, false otherwise
+ */
 export async function cancelCommand(id: OutputId): Promise<boolean> {
   const workerPool = getWorkerPool();
   const cancelled = workerPool.cancelCommand(id);
@@ -90,7 +112,12 @@ export async function cancelCommand(id: OutputId): Promise<boolean> {
   return cancelled;
 }
 
-// コマンド実行状態の取得
+/**
+ * Retrieves the current status of a command execution
+ * 
+ * @param id - The output ID of the command
+ * @returns Promise resolving to command status or "not_found" if command doesn't exist
+ */
 export async function getCommandStatus(
   id: OutputId,
 ): Promise<CommandStatus | "not_found"> {
@@ -104,7 +131,12 @@ export async function getCommandStatus(
   }
 }
 
-// コマンド実行進捗の取得
+/**
+ * Retrieves detailed progress information for a command execution
+ * 
+ * @param id - The output ID of the command
+ * @returns Promise resolving to progress information including status, output, and metadata, or null if not found
+ */
 export async function getCommandProgress(id: OutputId) {
   try {
     const output = await getOutputById(id);
@@ -126,13 +158,23 @@ export async function getCommandProgress(id: OutputId) {
   }
 }
 
-// ワーカープールの状態取得
+/**
+ * Gets the current status of the worker pool
+ * 
+ * @returns Current worker pool status including active workers and queued tasks
+ */
 export function getWorkerPoolStatus() {
   const workerPool = getWorkerPool();
   return workerPool.getStatus();
 }
 
-// 全てのコマンドの完了を待つ
+/**
+ * Waits for all currently running and queued commands to complete
+ * 
+ * Uses polling to check worker pool status until all tasks are finished.
+ * 
+ * @returns Promise that resolves when all commands are complete
+ */
 export async function waitForAllCommands(): Promise<void> {
   const workerPool = getWorkerPool();
   const status = workerPool.getStatus();
@@ -141,7 +183,7 @@ export async function waitForAllCommands(): Promise<void> {
     return;
   }
 
-  // 簡易的なポーリング実装
+  // Simple polling implementation
   while (true) {
     const currentStatus = workerPool.getStatus();
     if (currentStatus.busyWorkers === 0 && currentStatus.queuedTasks === 0) {
@@ -151,16 +193,23 @@ export async function waitForAllCommands(): Promise<void> {
   }
 }
 
-// クリーンアップ関数
+/**
+ * Cleans up command execution resources
+ * 
+ * Terminates the worker pool and performs cleanup operations.
+ * Called automatically on process signals (SIGINT, SIGTERM).
+ * 
+ * @returns Promise that resolves when cleanup is complete
+ */
 export async function cleanup(): Promise<void> {
   console.log("Cleaning up command execution resources...");
   await terminateWorkerPool();
   console.log("Command execution cleanup completed");
 }
 
-// プロセス終了時の自動クリーンアップ
+// Automatic cleanup on process termination
 if (typeof Deno !== "undefined") {
-  // Deno環境でのクリーンアップ
+  // Cleanup for Deno environment
   Deno.addSignalListener("SIGINT", async () => {
     console.log("Received SIGINT, cleaning up...");
     await cleanup();
