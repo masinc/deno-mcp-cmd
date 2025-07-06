@@ -9,6 +9,7 @@
     "jsr:@std/internal@^1.0.6": "1.0.9",
     "jsr:@std/internal@^1.0.9": "1.0.9",
     "jsr:@std/path@^1.1.1": "1.1.1",
+    "jsr:@std/yaml@^1.0.8": "1.0.8",
     "npm:@hono/mcp@0.1": "0.1.0_@modelcontextprotocol+sdk@1.15.0__express@5.1.0__zod@3.25.74_hono@4.8.4",
     "npm:@libsql/client@*": "0.15.9",
     "npm:@libsql/client@~0.15.9": "0.15.9",
@@ -54,6 +55,9 @@
       "dependencies": [
         "jsr:@std/internal@^1.0.9"
       ]
+    },
+    "@std/yaml@1.0.8": {
+      "integrity": "90b8aab62995e929fa0ea5f4151c287275b63e321ac375c35ff7406ca60c169d"
     }
   },
   "npm": {
@@ -741,6 +745,7 @@
       "jsr:@std/encoding@^1.0.10",
       "jsr:@std/fs@^1.0.19",
       "jsr:@std/path@^1.1.1",
+      "jsr:@std/yaml@^1.0.8",
       "npm:@hono/mcp@0.1",
       "npm:@libsql/client@~0.15.9",
       "npm:@modelcontextprotocol/sdk@^1.15.0",

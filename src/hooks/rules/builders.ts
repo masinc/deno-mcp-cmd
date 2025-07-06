@@ -209,43 +209,45 @@ export function createRule(
 }
 
 /**
- * Creates a warning rule that shows a warning first, then skips on acknowledgment
+ * Creates a warning rule that shows a warning first, then performs configurable action on acknowledgment
  * @param name - The warning name (used in acknowledgeWarnings array)
  * @param condition - Function that determines if the warning should trigger
- * @param warningMessage - The warning message to display
- * @param skipReason - Optional custom reason template for acknowledgment case
- * @returns A rule that warns first, then skips when acknowledged
+ * @param warningReason - The warning reason/message to display
+ * @param acknowledgedReason - Optional custom reason template for acknowledgment case
+ * @param acknowledgedAction - Action to take when warning is acknowledged (default: "skip")
+ * @returns A rule that warns first, then performs the specified action when acknowledged
  */
 export function createWarningRule(
   name: string,
   condition: (ctx: import("./types.ts").RuleContext) => boolean,
-  warningMessage: string,
-  skipReason?: string,
+  warningReason: string,
+  acknowledgedReason?: string,
+  acknowledgedAction: "skip" | "confirm" | "approve" = "skip",
 ): Rule {
   return {
     name,
     condition: (ctx) => {
       if (condition(ctx)) {
-        // If warning is acknowledged, skip the command
+        // If warning is acknowledged, perform the configured action
         if (ctx.toolInput.acknowledgeWarnings?.includes(name)) {
-          const finalSkipReason = skipReason
+          const finalAcknowledgedReason = acknowledgedReason
             ? renderReason(
-              skipReason,
+              acknowledgedReason,
               createTemplateData(ctx, {
-                action: "skip",
+                action: acknowledgedAction,
               }),
             )
-            : `${name} warning acknowledged - command allowed but may not work as expected`;
+            : `${name} warning acknowledged - command ${acknowledgedAction === "skip" ? "allowed but may not work as expected" : acknowledgedAction === "approve" ? "approved" : "requires confirmation"}`;
 
           return {
-            action: "skip",
-            reason: finalSkipReason,
+            action: acknowledgedAction,
+            reason: finalAcknowledgedReason,
           };
         }
 
         // Otherwise, issue warning
-        const warningReason = createWarningReason(name, warningMessage);
-        return { action: "warning", reason: warningReason };
+        const finalWarningReason = createWarningReason(name, warningReason);
+        return { action: "warning", reason: finalWarningReason };
       }
       return null;
     },

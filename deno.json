@@ -29,6 +29,7 @@
     "@std/encoding": "jsr:@std/encoding@^1.0.10",
     "@std/fs": "jsr:@std/fs@^1.0.19",
     "@std/path": "jsr:@std/path@^1.1.1",
+    "@std/yaml": "jsr:@std/yaml@^1.0.8",
     "drizzle-orm": "npm:drizzle-orm@^0.44.2",
     "drizzle-zod": "npm:drizzle-zod@^0.8.2",
     "eta": "npm:eta@^3.5.0",
