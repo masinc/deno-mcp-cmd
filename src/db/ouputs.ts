@@ -1,7 +1,7 @@
 import { initOrGetDrizzleDb, outputs } from "./drizzle.ts";
-import { type OutputId, type CommandStatus, OutputIdSchema } from "./schema.ts";
+import type { OutputId } from "./schema.ts";
 import { eq, lt } from "drizzle-orm";
-import { encodeBase64, decodeBase64 } from "@std/encoding";
+import { decodeBase64, encodeBase64 } from "@std/encoding";
 
 export function createOutputId(): OutputId {
   const id = crypto.randomUUID();
@@ -39,17 +39,21 @@ export async function insertOutput(
     await db.insert(outputs).values({
       id: params.id,
       stdout: params.stdout,
-      stdoutIsEncoded: params.stdoutIsEncoded || false,
-      stderr: params.stderr || "",
-      stderrIsEncoded: params.stderrIsEncoded || false,
-      status: params.status || "running",
-      exitCode: params.exitCode || null,
+      stdoutIsEncoded: params.stdoutIsEncoded ?? false,
+      stderr: params.stderr ?? "",
+      stderrIsEncoded: params.stderrIsEncoded ?? false,
+      status: params.status ?? "running",
+      exitCode: params.exitCode ?? null,
       createdAt,
     });
 
     return params.id;
   } catch (error) {
-    throw new Error(`Database error while inserting output: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Database error while inserting output: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    );
   }
 }
 
@@ -63,14 +67,17 @@ type OutputResult = {
   createdAt: string;
 };
 
-export async function getOutputById(id: OutputId): Promise<OutputResult | undefined> {
+export async function getOutputById(
+  id: OutputId,
+): Promise<OutputResult | undefined> {
   try {
     if (!isOutputId(id)) {
       throw new Error(`Invalid output ID format: ${id}`);
     }
 
     const db = await initOrGetDrizzleDb();
-    const result = await db.select().from(outputs).where(eq(outputs.id, id)).limit(1);
+    const result = await db.select().from(outputs).where(eq(outputs.id, id))
+      .limit(1);
 
     if (result.length === 0) {
       return undefined;
@@ -87,7 +94,11 @@ export async function getOutputById(id: OutputId): Promise<OutputResult | undefi
       createdAt: output.createdAt,
     };
   } catch (error) {
-    throw new Error(`Database error while getting output by ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Database error while getting output by ID: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    );
   }
 }
 
@@ -100,11 +111,17 @@ export async function deleteExpiredOutputs(
     expirationDate.setDate(expirationDate.getDate() - expirationDays);
     const isoExpirationDate = expirationDate.toISOString();
 
-    const result = await db.delete(outputs).where(lt(outputs.createdAt, isoExpirationDate));
-    
+    const result = await db.delete(outputs).where(
+      lt(outputs.createdAt, isoExpirationDate),
+    );
+
     return result.rowsAffected || 0;
   } catch (error) {
-    throw new Error(`Database error while deleting expired outputs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Database error while deleting expired outputs: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    );
   }
 }
 
@@ -121,9 +138,9 @@ type UpdateOutputParams = {
 export async function updateOutput(params: UpdateOutputParams): Promise<void> {
   try {
     const db = await initOrGetDrizzleDb();
-    
-    const updateValues: Record<string, any> = {};
-    
+
+    const updateValues: Record<string, string | number | boolean | null> = {};
+
     if (params.stdout !== undefined) {
       updateValues.stdout = params.stdout;
     }
@@ -142,18 +159,26 @@ export async function updateOutput(params: UpdateOutputParams): Promise<void> {
     if (params.exitCode !== undefined) {
       updateValues.exitCode = params.exitCode;
     }
-    
+
     if (Object.keys(updateValues).length === 0) {
       throw new Error("No fields to update");
     }
-    
-    const result = await db.update(outputs).set(updateValues).where(eq(outputs.id, params.id));
-    
+
+    const result = await db.update(outputs).set(updateValues).where(
+      eq(outputs.id, params.id),
+    );
+
     if (result.rowsAffected !== 1) {
-      throw new Error(`Failed to update output: expected 1 change, got ${result.rowsAffected}`);
+      throw new Error(
+        `Failed to update output: expected 1 change, got ${result.rowsAffected}`,
+      );
     }
   } catch (error) {
-    throw new Error(`Database error while updating output: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Database error while updating output: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    );
   }
 }
 
@@ -172,26 +197,28 @@ export async function updateStreamOutput(
     if (streamType === "stdout") {
       const willBeEncoded = isBinary || currentOutput.stdoutIsEncoded;
       let updatedStdout: string;
-      
+
       if (willBeEncoded) {
         // バイナリデータとして処理
-        const existingData = currentOutput.stdoutIsEncoded 
+        const existingData = currentOutput.stdoutIsEncoded
           ? decodeBase64(currentOutput.stdout)
           : new TextEncoder().encode(currentOutput.stdout);
-        const newData = typeof content === "string" 
+        const newData = typeof content === "string"
           ? new TextEncoder().encode(content)
           : content;
-        
+
         const combined = new Uint8Array(existingData.length + newData.length);
         combined.set(existingData);
         combined.set(newData, existingData.length);
         updatedStdout = encodeBase64(combined);
       } else {
         // テキストデータとして処理
-        const newText = typeof content === "string" ? content : new TextDecoder().decode(content);
+        const newText = typeof content === "string"
+          ? content
+          : new TextDecoder().decode(content);
         updatedStdout = currentOutput.stdout + newText;
       }
-      
+
       await updateOutput({
         id: outputId,
         stdout: updatedStdout,
@@ -200,26 +227,28 @@ export async function updateStreamOutput(
     } else {
       const willBeEncoded = isBinary || currentOutput.stderrIsEncoded;
       let updatedStderr: string;
-      
+
       if (willBeEncoded) {
         // バイナリデータとして処理
-        const existingData = currentOutput.stderrIsEncoded 
+        const existingData = currentOutput.stderrIsEncoded
           ? decodeBase64(currentOutput.stderr)
           : new TextEncoder().encode(currentOutput.stderr);
-        const newData = typeof content === "string" 
+        const newData = typeof content === "string"
           ? new TextEncoder().encode(content)
           : content;
-        
+
         const combined = new Uint8Array(existingData.length + newData.length);
         combined.set(existingData);
         combined.set(newData, existingData.length);
         updatedStderr = encodeBase64(combined);
       } else {
         // テキストデータとして処理
-        const newText = typeof content === "string" ? content : new TextDecoder().decode(content);
+        const newText = typeof content === "string"
+          ? content
+          : new TextDecoder().decode(content);
         updatedStderr = currentOutput.stderr + newText;
       }
-      
+
       await updateOutput({
         id: outputId,
         stderr: updatedStderr,

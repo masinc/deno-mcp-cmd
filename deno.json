@@ -9,10 +9,13 @@
   },
   "tasks": {
     "dev": "deno run --watch main.ts",
+    "test": "deno test --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options",
+    "test:unit": "deno test src/ --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options",
+    "test:integration": "deno test tests/ --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options",
     "remove-db": "rm -f ~/.config/@masinc/mcp-cmd/mcp-cmd.db",
-    "run-http": "deno serve --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi src/bin/http.ts",
+    "run-http": "deno serve --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options src/bin/http.ts",
     "inspect-http": "npx @modelcontextprotocol/inspector \"http://localhost:8000/mcp\"",
-    "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi src/bin/stdio.ts",
+    "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options src/bin/stdio.ts",
     "inspect-stdio": "npx @modelcontextprotocol/inspector deno task run-stdio"
   },
   "imports": {

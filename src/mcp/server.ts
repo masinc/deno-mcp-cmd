@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { runCommand, getCommandStatus, getCommandProgress } from "../command.ts";
+import { runCommand } from "../command.ts";
 import {
   deleteExpiredOutputs,
   getOutputById,
@@ -21,7 +21,8 @@ export async function createMcpServer(): Promise<McpServer> {
 
   mcpServer.registerTool("runCommand", {
     title: "Run Command",
-    description: `Execute a shell command and capture both stdout and stderr. Returns an output ID that can be used to retrieve the results later. Supports binary data (automatically base64 encoded) and stdin input. Use this for running any command like 'ls', 'curl', 'git', etc.`,
+    description:
+      `Execute a shell command and capture both stdout and stderr. Returns an output ID that can be used to retrieve the results later. Supports binary data (automatically base64 encoded) and stdin input. Use this for running any command like 'ls', 'curl', 'git', etc.`,
 
     inputSchema: {
       command: z.string().describe(
@@ -64,13 +65,13 @@ export async function createMcpServer(): Promise<McpServer> {
       }
 
       if (output.stdoutIsEncoded) {
-        return decodeBase64(output.stdout);
+        return new TextDecoder().decode(decodeBase64(output.stdout));
       }
 
       return output.stdout;
     })();
 
-    const result = runCommand(command, {
+    const result = await runCommand(command, {
       args: args,
       cwd: Deno.cwd(),
       stdin: stdinContent,
@@ -90,12 +91,15 @@ export async function createMcpServer(): Promise<McpServer> {
     };
   });
 
-  mcpServer.registerTool("getStdoutById", {
-    title: "Get Stdout by ID",
-    description: `Retrieve the stdout (standard output) from a previously executed command using its output ID. If the output contains binary data, it will be base64 encoded. Use this to get the main output/results from commands.`,
+  mcpServer.registerTool("getCommand", {
+    title: "Get Command Result",
+    description:
+      `Retrieve complete information about a command execution including status, exit code, stdout, stderr, and metadata. This is the primary tool for checking command results after running a command with runCommand.`,
 
     inputSchema: {
-      id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution. Use this to retrieve the stdout (main output) from that command."),
+      id: z.string().uuid().describe(
+        "The UUID output ID returned from a previous runCommand execution. Use this to get all information about the command execution.",
+      ),
     },
   }, async ({ id }) => {
     if (!isOutputId(id)) {
@@ -105,104 +109,23 @@ export async function createMcpServer(): Promise<McpServer> {
     const output = await getOutputById(id);
 
     if (!output) {
-      throw new Error(`Output with ID ${id} not found.`);
-    }
-
-    const structuredContent = {
-      base64Encoded: output.stdoutIsEncoded,
-      content: output.stdout,
-    };
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify(structuredContent),
-      }],
-      structuredContent,
-    };
-  });
-
-  mcpServer.registerTool("getStderrById", {
-    title: "Get Stderr by ID",
-    description: `Retrieve the stderr (standard error) from a previously executed command using its output ID. If the output contains binary data, it will be base64 encoded. Use this to get error messages, warnings, or diagnostic output from commands.`,
-
-    inputSchema: {
-      id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution. Use this to retrieve the stderr (error output/warnings) from that command."),
-    },
-  }, async ({ id }) => {
-    if (!isOutputId(id)) {
-      throw new Error(`Invalid output ID: ${id}`);
-    }
-
-    const output = await getOutputById(id);
-
-    if (!output) {
-      throw new Error(`Output with ID ${id} not found.`);
-    }
-
-    const structuredContent = {
-      base64Encoded: output.stderrIsEncoded,
-      content: output.stderr,
-    };
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify(structuredContent),
-      }],
-      structuredContent,
-    };
-  });
-
-  mcpServer.registerTool("getCommandStatus", {
-    title: "Get Command Status",
-    description: `Check the execution status of a command by its output ID. Returns 'running', 'completed', 'failed', or 'not_found'.`,
-
-    inputSchema: {
-      id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution."),
-    },
-  }, async ({ id }) => {
-    if (!isOutputId(id)) {
-      throw new Error(`Invalid output ID: ${id}`);
-    }
-
-    const status = await getCommandStatus(id);
-
-    const structuredContent = {
-      id: idToString(id),
-      status,
-    };
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify(structuredContent),
-      }],
-      structuredContent,
-    };
-  });
-
-  mcpServer.registerTool("getCommandProgress", {
-    title: "Get Command Progress",
-    description: `Get detailed progress information of a command execution including status, exit code, output availability, and current output (useful for monitoring running commands).`,
-
-    inputSchema: {
-      id: z.string().uuid().describe("The UUID output ID returned from a previous runCommand execution."),
-    },
-  }, async ({ id }) => {
-    if (!isOutputId(id)) {
-      throw new Error(`Invalid output ID: ${id}`);
-    }
-
-    const progress = await getCommandProgress(id);
-
-    if (!progress) {
       throw new Error(`Command with ID ${id} not found.`);
     }
 
     const structuredContent = {
       id: idToString(id),
-      ...progress,
+      status: output.status,
+      exitCode: output.exitCode,
+      hasOutput: output.stdout.length > 0 || output.stderr.length > 0,
+      stdout: {
+        content: output.stdout,
+        isEncoded: output.stdoutIsEncoded,
+      },
+      stderr: {
+        content: output.stderr,
+        isEncoded: output.stderrIsEncoded,
+      },
+      createdAt: output.createdAt,
     };
 
     return {

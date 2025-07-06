@@ -3,244 +3,87 @@ import {
   getOutputById,
   insertOutput,
   updateOutput,
-  updateStreamOutput,
 } from "./db/ouputs.ts";
 import type { CommandStatus, OutputId } from "./db/types.ts";
-import { encodeBase64 } from "@std/encoding";
+import { getWorkerPool, terminateWorkerPool } from "./workers/worker-pool.ts";
+import type { CommandOptions, TaskResult } from "./workers/types.ts";
 
-type StreamChunk = {
-  content: string | Uint8Array;
-  displayText: string;
-  timestamp: number;
-  type: "stdout" | "stderr";
-};
+export type { CommandOptions };
 
-type CommandOptions = {
-  args?: string[];
-  stdin?: string | Uint8Array;
-  cwd?: string;
-  env?: Record<string, string>;
-};
-
-function isBinaryData(content: string | Uint8Array): content is Uint8Array {
-  return content instanceof Uint8Array;
-}
-
-function isStringData(content: string | Uint8Array): content is string {
-  return typeof content === "string";
-}
-
-function combineBinaryChunks(chunks: Uint8Array[]): Uint8Array {
-  const totalSize = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const combined = new Uint8Array(totalSize);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return combined;
-}
-
-async function writeStdinData(
-  writer: WritableStreamDefaultWriter<Uint8Array>,
-  data: string | Uint8Array,
-) {
-  try {
-    const stdinData = typeof data === "string"
-      ? new TextEncoder().encode(data)
-      : data;
-    await writer.write(stdinData);
-    await writer.close();
-  } catch (error) {
-    await writer.abort();
-    throw new Error(
-      `Failed to write stdin: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`,
-    );
-  }
-}
-
-async function processStream(
-  stream: ReadableStream<Uint8Array>,
-  type: "stdout" | "stderr",
-  outputId: OutputId,
-) {
-  const chunks: StreamChunk[] = [];
-
-  await stream.pipeTo(
-    new WritableStream({
-      write(chunk) {
-        try {
-          const content = new TextDecoder("utf-8", { fatal: true }).decode(
-            chunk,
-          );
-          const chunkData = {
-            content,
-            displayText: content,
-            timestamp: performance.now(),
-            type,
-          };
-          chunks.push(chunkData);
-
-          // リアルタイムでDB更新
-          updateStreamOutput(outputId, type, content, false).catch(error => {
-            console.error(`Failed to update stream output: ${error}`);
-          });
-        } catch (_error) {
-          const displayText = `[Binary data: ${chunk.length} bytes]`;
-          const chunkData = {
-            content: chunk,
-            displayText,
-            timestamp: performance.now(),
-            type,
-          };
-          chunks.push(chunkData);
-
-          // リアルタイムでDB更新（バイナリデータ）
-          updateStreamOutput(outputId, type, chunk, true).catch(error => {
-            console.error(`Failed to update stream output: ${error}`);
-          });
-        }
-      },
-    }),
-  );
-
-  return chunks;
-}
-
-function processOutputData(
-  outputs: (string | Uint8Array)[],
-): { data: string; isEncoded: boolean } {
-  const hasBinary = outputs.some(isBinaryData);
-
-  if (hasBinary) {
-    const binaryChunks = outputs.filter(isBinaryData);
-    return {
-      data: encodeBase64(combineBinaryChunks(binaryChunks)),
-      isEncoded: true,
-    };
-  } else {
-    const textChunks = outputs.filter(isStringData);
-    return {
-      data: textChunks.join("\n"),
-      isEncoded: false,
-    };
-  }
-}
-
-async function executeCommandAsync(
-  id: OutputId,
+// ワーカープールベースのコマンド実行
+export async function runCommand(
   command: string,
   options?: CommandOptions,
-): Promise<void> {
-  const cmd = new Deno.Command(command, {
-    args: options?.args || [],
-    cwd: options?.cwd,
-    env: options?.env,
-    stdout: "piped",
-    stderr: "piped",
-    stdin: options?.stdin ? "piped" : "null",
-  });
-
-  const child = cmd.spawn();
-
-  // stdin処理
-  if (options?.stdin) {
-    await writeStdinData(child.stdin.getWriter(), options.stdin);
-  }
-
-  // ストリーム処理
-  const [stdoutChunks, stderrChunks, status] = await Promise.all([
-    processStream(child.stdout, "stdout", id),
-    processStream(child.stderr, "stderr", id),
-    child.status,
-  ]);
-
-  // 全チャンクを時系列順にソート
-  const allChunks = [...stdoutChunks, ...stderrChunks].sort((a, b) =>
-    a.timestamp - b.timestamp
-  );
-
-
-  // DB保存用データの処理（type別に分離）
-  const stdoutContents = allChunks.filter((chunk) => chunk.type === "stdout")
-    .map((chunk) => chunk.content);
-  const stderrContents = allChunks.filter((chunk) => chunk.type === "stderr")
-    .map((chunk) => chunk.content);
-
-  const stdoutData = processOutputData(stdoutContents);
-  const stderrData = processOutputData(stderrContents);
-
-  // データベースを更新（完了状態に）
-  try {
-    await updateOutput({
-      id,
-      stdout: stdoutData.data,
-      stdoutIsEncoded: stdoutData.isEncoded,
-      stderr: stderrData.data,
-      stderrIsEncoded: stderrData.isEncoded,
-      status: status.success ? "completed" : "failed",
-      exitCode: status.code,
-    });
-  } catch (error) {
-    console.error(`Failed to save command output for ID ${id}:`, error);
-  }
-}
-
-export function runCommand(
-  command: string,
-  options?: CommandOptions,
-): {
-  id: OutputId;
-  status: "started";
-} {
+): Promise<TaskResult> {
   const id = createOutputId();
 
   // 初期状態でDBレコード作成
-  insertOutput({
+  await insertOutput({
     id,
     stdout: "",
     stderr: "",
     status: "running",
     exitCode: null,
-  }).catch(error => {
-    console.error(`Failed to create initial record for ID ${id}:`, error);
   });
 
-  // バックグラウンドで非同期実行（メインスレッドをブロックしない）
-  setTimeout(() => {
-    executeCommandAsync(id, command, options).catch((error) => {
-      console.error(`Command execution failed for ID ${id}:`, error);
-      // エラー時はfailed状態に更新
-      updateOutput({
-        id,
-        stderr: error instanceof Error ? error.message : "Unknown error",
-        status: "failed",
-        exitCode: -1,
-      }).catch(dbError => {
-        console.error(`Failed to update error status for ID ${id}:`, dbError);
-      });
-    });
-  }, 0);
+  try {
+    // ワーカープールでコマンド実行
+    const workerPool = getWorkerPool();
+    const result = await workerPool.executeCommand(
+      id,
+      command,
+      options?.args,
+      options,
+    );
 
-  return {
-    id,
-    status: "started",
-  };
+    return result;
+  } catch (error) {
+    console.error(`Command execution failed for ID ${id}:`, error);
+
+    // エラー時はfailed状態に更新
+    await updateOutput({
+      id,
+      stderr: error instanceof Error ? error.message : "Unknown error",
+      status: "failed",
+      exitCode: -1,
+    });
+
+    throw error;
+  }
 }
 
-export async function getCommandStatus(id: OutputId): Promise<CommandStatus | "not_found"> {
+// コマンドキャンセル機能
+export async function cancelCommand(id: OutputId): Promise<boolean> {
+  const workerPool = getWorkerPool();
+  const cancelled = workerPool.cancelCommand(id);
+
+  if (cancelled) {
+    await updateOutput({
+      id,
+      status: "failed",
+      exitCode: -1,
+      stderr: "Command cancelled by user",
+    });
+  }
+
+  return cancelled;
+}
+
+// コマンド実行状態の取得
+export async function getCommandStatus(
+  id: OutputId,
+): Promise<CommandStatus | "not_found"> {
   try {
     const output = await getOutputById(id);
-    return output?.status || "not_found";
+    if (!output) return "not_found";
+
+    return output.status;
   } catch {
     return "not_found";
   }
 }
 
+// コマンド実行進捗の取得
 export async function getCommandProgress(id: OutputId) {
   try {
     const output = await getOutputById(id);
@@ -260,4 +103,52 @@ export async function getCommandProgress(id: OutputId) {
   } catch {
     return null;
   }
+}
+
+// ワーカープールの状態取得
+export function getWorkerPoolStatus() {
+  const workerPool = getWorkerPool();
+  return workerPool.getStatus();
+}
+
+// 全てのコマンドの完了を待つ
+export async function waitForAllCommands(): Promise<void> {
+  const workerPool = getWorkerPool();
+  const status = workerPool.getStatus();
+
+  if (status.busyWorkers === 0 && status.queuedTasks === 0) {
+    return;
+  }
+
+  // 簡易的なポーリング実装
+  while (true) {
+    const currentStatus = workerPool.getStatus();
+    if (currentStatus.busyWorkers === 0 && currentStatus.queuedTasks === 0) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+// クリーンアップ関数
+export async function cleanup(): Promise<void> {
+  console.log("Cleaning up command execution resources...");
+  await terminateWorkerPool();
+  console.log("Command execution cleanup completed");
+}
+
+// プロセス終了時の自動クリーンアップ
+if (typeof Deno !== "undefined") {
+  // Deno環境でのクリーンアップ
+  Deno.addSignalListener("SIGINT", async () => {
+    console.log("Received SIGINT, cleaning up...");
+    await cleanup();
+    Deno.exit(0);
+  });
+
+  Deno.addSignalListener("SIGTERM", async () => {
+    console.log("Received SIGTERM, cleaning up...");
+    await cleanup();
+    Deno.exit(0);
+  });
 }

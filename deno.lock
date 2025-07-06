@@ -11,6 +11,7 @@
     "npm:@libsql/client@*": "0.15.9",
     "npm:@libsql/client@~0.15.9": "0.15.9",
     "npm:@modelcontextprotocol/sdk@^1.15.0": "1.15.0_express@5.1.0_zod@3.25.74",
+    "npm:@types/node@*": "22.15.15",
     "npm:drizzle-orm@~0.44.2": "0.44.2",
     "npm:drizzle-zod@~0.8.2": "0.8.2_drizzle-orm@0.44.2_zod@3.25.74",
     "npm:hono@^4.8.4": "4.8.4",

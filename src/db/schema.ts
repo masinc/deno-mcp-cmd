@@ -1,14 +1,17 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const outputs = sqliteTable("outputs", {
   id: text("id").primaryKey(),
   stdout: text("stdout").notNull().default(""),
-  stdoutIsEncoded: integer("stdoutIsEncoded", { mode: "boolean" }).notNull().default(false),
+  stdoutIsEncoded: integer("stdoutIsEncoded", { mode: "boolean" }).notNull()
+    .default(false),
   stderr: text("stderr").notNull().default(""),
-  stderrIsEncoded: integer("stderrIsEncoded", { mode: "boolean" }).notNull().default(false),
-  status: text("status", { enum: ["running", "completed", "failed"] }).notNull().default("running"),
+  stderrIsEncoded: integer("stderrIsEncoded", { mode: "boolean" }).notNull()
+    .default(false),
+  status: text("status", { enum: ["running", "completed", "failed"] }).notNull()
+    .default("running"),
   exitCode: integer("exitCode"),
   createdAt: text("createdAt").notNull().default("datetime('now')"),
 });
