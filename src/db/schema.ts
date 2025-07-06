@@ -24,8 +24,8 @@ export const selectOutputSchema = createSelectSchema(outputs);
 export type Output = typeof outputs.$inferSelect;
 export type NewOutput = typeof outputs.$inferInsert;
 
-// Custom branded type for OutputId
-export const OutputIdSchema = z.string().uuid().brand("outputId");
+// Custom branded type for OutputId (9桁数字)
+export const OutputIdSchema = z.string().regex(/^\d{9}$/).brand("outputId");
 export type OutputId = z.infer<typeof OutputIdSchema>;
 
 export const CommandStatusSchema = z.enum(["running", "completed", "failed"]);

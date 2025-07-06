@@ -4,12 +4,14 @@ import { eq, lt } from "drizzle-orm";
 import { decodeBase64, encodeBase64 } from "@std/encoding";
 
 export function createOutputId(): OutputId {
-  const id = crypto.randomUUID();
+  // 9桁数字 = 3トークン、10億パターン (25トークンから88%削減)
+  const id = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
   return id as OutputId;
 }
 
 export function isOutputId(id: unknown): id is OutputId {
-  return typeof id === "string" && id.length === 36;
+  // 9桁数字のIDバリデーション
+  return typeof id === "string" && /^\d{9}$/.test(id);
 }
 
 export function idToString(id: OutputId): string {

@@ -68,12 +68,12 @@ that can be used to retrieve the results later.
   'node')
 - `args` (optional): Array of command-line arguments
 - `stdin` (optional): Text input to send to the command's stdin
-- `stdinForOutput` (optional): UUID of a previous command's output to use as
+- `stdinForOutput` (optional): Output ID of a previous command's output to use as
   stdin (enables command chaining)
 
 **Output:**
 
-- `id`: UUID output ID for retrieving results later
+- `id`: 9-digit numeric output ID for retrieving results later
 - `status`: "running" (command execution begins asynchronously)
 
 ### getCommand
@@ -84,7 +84,7 @@ command results after running a command with runCommand.
 
 **Input:**
 
-- `id`: The UUID output ID returned from a previous runCommand execution
+- `id`: The 9-digit numeric output ID returned from a previous runCommand execution
 
 **Output:**
 

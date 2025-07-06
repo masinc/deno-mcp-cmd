@@ -2,15 +2,14 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { createOutputId, idToString, isOutputId } from "./ouputs.ts";
 
 Deno.test("createOutputId", async (t) => {
-  await t.step("should create valid UUID", () => {
+  await t.step("should create valid 9-digit numeric ID", () => {
     const id = createOutputId();
     assertEquals(typeof id, "string");
-    assertEquals(id.length, 36);
+    assertEquals(id.length, 9);
 
-    // Should match UUID format
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    assertEquals(uuidRegex.test(id), true);
+    // Should match 9-digit numeric format
+    const numericRegex = /^\d{9}$/;
+    assertEquals(numericRegex.test(id), true);
   });
 
   await t.step("should create unique IDs", () => {
@@ -26,10 +25,11 @@ Deno.test("createOutputId", async (t) => {
 });
 
 Deno.test("isOutputId", async (t) => {
-  await t.step("should validate correct UUID format", () => {
+  await t.step("should validate correct 9-digit numeric format", () => {
     const validIds = [
-      "123e4567-e89b-12d3-a456-426614174000",
-      "550e8400-e29b-41d4-a716-446655440000",
+      "123456789",
+      "000000001",
+      "999999999",
       createOutputId(),
     ];
 
@@ -42,8 +42,10 @@ Deno.test("isOutputId", async (t) => {
     const invalidIds = [
       "",
       "123",
-      "123e4567-e89b-12d3-a456", // too short
-      "123e4567-e89b-12d3-a456-426614174000-extra", // too long
+      "12345678", // too short
+      "1234567890", // too long
+      "12345678a", // contains non-digit
+      "123e4567-e89b-12d3-a456-426614174000", // old UUID format
       null,
       undefined,
       123,
@@ -56,14 +58,16 @@ Deno.test("isOutputId", async (t) => {
     });
   });
 
-  await t.step("should be case insensitive", () => {
-    const lowerCase = "123e4567-e89b-12d3-a456-426614174000";
-    const upperCase = "123E4567-E89B-12D3-A456-426614174000";
-    const mixedCase = "123E4567-e89b-12D3-a456-426614174000";
+  await t.step("should handle edge cases", () => {
+    const edgeCases = [
+      "000000000", // all zeros
+      "111111111", // all ones
+      "123456789", // sequential digits
+    ];
 
-    assertEquals(isOutputId(lowerCase), true);
-    assertEquals(isOutputId(upperCase), true);
-    assertEquals(isOutputId(mixedCase), true);
+    edgeCases.forEach((id) => {
+      assertEquals(isOutputId(id), true);
+    });
   });
 });
 
