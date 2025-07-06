@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-export const RuleActionSchema = z.enum(["block", "approve", "confirm", "skip"]);
+export const RuleActionSchema = z.enum(["block", "warning", "approve", "confirm", "skip"]);
 export type RuleAction = z.infer<typeof RuleActionSchema>;
 
 export const RuleContextSchema = z.object({
@@ -10,6 +10,7 @@ export const RuleContextSchema = z.object({
     stdin: z.string().optional(),
     stdinForOutput: z.string().optional(),
     cwd: z.string().optional(),
+    acknowledgeWarnings: z.array(z.string()).optional(),
   }),
   sessionId: z.string(),
   transcriptPath: z.string(),
@@ -44,10 +45,6 @@ export const RuleTemplateDataSchema = z.object({
   
   // Pattern-specific data
   pattern: z.string().optional(),
-  
-  // Flag-specific data
-  dangerousFlags: z.array(z.string()).optional(),
-  flagCount: z.number().optional(),
   
   // Path-specific data
   argCount: z.number().optional(),

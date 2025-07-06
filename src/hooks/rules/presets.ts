@@ -2,6 +2,7 @@ import type { Rule } from "./types.ts";
 import {
   blockCommand,
   blockOutsideCurrentDirectory,
+  warnShellExpansion,
   createCommandRule,
 } from "./builders.ts";
 
@@ -33,5 +34,10 @@ export const SECURITY_RULES: Rule[] = [
   // Path-based security rules with template
   blockOutsideCurrentDirectory(
     "Command '<%= it.command %>' with <%= it.argCount %> args blocked - operations outside current directory not allowed",
+  ),
+
+  // Warn about shell expansion attempts
+  warnShellExpansion(
+    "Shell syntax detected in '<%= it.command %>'. Backticks (`) and command substitution ($()) cannot be expanded here. Add acknowledgeWarnings: [\"warn-shell-expansion\"] if you understand this limitation.",
   ),
 ];

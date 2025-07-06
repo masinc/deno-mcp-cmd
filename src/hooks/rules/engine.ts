@@ -13,6 +13,9 @@ export function evaluateRules(rules: Rule[], context: RuleContext): RuleResult {
   const blockResult = results.find((r) => r.action === "block");
   if (blockResult) return blockResult;
 
+  const warningResult = results.find((r) => r.action === "warning");
+  if (warningResult) return warningResult;
+
   const confirmResult = results.find((r) => r.action === "confirm");
   if (confirmResult) return confirmResult;
 

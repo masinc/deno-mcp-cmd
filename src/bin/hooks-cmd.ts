@@ -52,6 +52,12 @@ function hookToolRun(input: PreToolUseInput): Promise<never> {
         reason: result.reason,
       });
       break;
+    case "warning":
+      writeOutputAndExit({
+        decision: "block",
+        reason: result.reason,
+      });
+      break;
     case "confirm":
       writeOutputAndExit({
         reason: result.reason,

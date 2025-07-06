@@ -10,6 +10,9 @@ import {
   approveCommands,
   blockCommandWithFlags,
   blockOutsideCurrentDirectory,
+  blockShellExecution,
+  warnShellExecution,
+  warnShellExpansion,
   createRule,
   blockCommandPattern,
   confirmCommandPattern,
@@ -20,9 +23,10 @@ import type { RuleContext } from "./types.ts";
 const createContext = (
   command: string,
   args?: string[],
-  cwd?: string
+  cwd?: string,
+  acknowledgeWarnings?: string[]
 ): RuleContext => ({
-  toolInput: { command, args, cwd },
+  toolInput: { command, args, cwd, acknowledgeWarnings },
   sessionId: "test-session",
   transcriptPath: "/test/transcript",
   timestamp: new Date(),
@@ -223,13 +227,13 @@ Deno.test("Rule builders", async (t) => {
   });
 
   await t.step("rules should have correct names", () => {
-    assert(blockCommand("rm").name === "block_rm");
-    assert(confirmCommand("curl").name === "confirm_curl");
-    assert(approveCommand("ls").name === "approve_ls");
-    assert(blockCommands(["sudo", "su"]).name === "block_commands_sudo_su");
-    assert(approveCommands(["ls", "cat"]).name === "approve_commands_ls_cat");
-    assert(blockCommandWithFlags("rm", ["-rf"]).name === "block_rm_with_flags");
-    assert(blockOutsideCurrentDirectory().name === "block_outside_current_directory");
+    assert(blockCommand("rm").name === "block-rm");
+    assert(confirmCommand("curl").name === "confirm-curl");
+    assert(approveCommand("ls").name === "approve-ls");
+    assert(blockCommands(["sudo", "su"]).name === "block-commands-sudo-su");
+    assert(approveCommands(["ls", "cat"]).name === "approve-commands-ls-cat");
+    assert(blockCommandWithFlags("rm", ["-rf"]).name === "block-rm-with-flags");
+    assert(blockOutsideCurrentDirectory().name === "block-outside-current-directory");
   });
 
   await t.step("default reasons should be generated when not provided", () => {
@@ -355,22 +359,22 @@ Deno.test("Extended Rule builders", async (t) => {
 
   await t.step("Rule name generation", () => {
     // Single command
-    assert(createCommandRule("block", "test").name === "block_test");
-    assert(createCommandRule("approve", "ls").name === "approve_ls");
+    assert(createCommandRule("block", "test").name === "block-test");
+    assert(createCommandRule("approve", "ls").name === "approve-ls");
     
     // Multiple commands
-    assert(createCommandRule("confirm", ["a", "b"]).name === "confirm_commands_a_b");
-    assert(createCommandRule("block", ["x", "y", "z"]).name === "block_commands_x_y_z");
+    assert(createCommandRule("confirm", ["a", "b"]).name === "confirm-commands-a-b");
+    assert(createCommandRule("block", ["x", "y", "z"]).name === "block-commands-x-y-z");
     
     // Pattern rules
-    assert(createPatternRule("block", /test/).name === "block_pattern_test");
-    assert(createPatternRule("approve", /^get.*/).name === "approve_pattern_^get.*");
+    assert(createPatternRule("block", /test/).name === "block-pattern-test");
+    assert(createPatternRule("approve", /^get.*/).name === "approve-pattern-^get.*");
     
     // Command with flags
-    assert(blockCommandWithFlags("rm", ["-rf"]).name === "block_rm_with_flags");
+    assert(blockCommandWithFlags("rm", ["-rf"]).name === "block-rm-with-flags");
     
     // Custom rule
-    assert(createRule("my_custom", "skip", () => true).name === "my_custom");
+    assert(createRule("my-custom", "skip", () => true).name === "my-custom");
   });
 
   await t.step("Error handling and edge cases", () => {
@@ -474,12 +478,12 @@ Deno.test("Eta template support", async (t) => {
     const rule = blockCommandWithFlags(
       "rm",
       ["-rf", "--force"],
-      "Dangerous rm command with <%= it.flagCount %> dangerous flags: <%= it.dangerousFlags.join(', ') %>"
+      "Dangerous rm command '<%= it.command %>' blocked in session <%= it.sessionId %>"
     );
     
     const result = rule.condition(createContext("rm", ["-rf", "file.txt"]));
     assert(result?.action === "block");
-    assert(result?.reason === "Dangerous rm command with 1 dangerous flags: -rf");
+    assert(result?.reason === "Dangerous rm command 'rm' blocked in session test-session");
   });
 
   await t.step("blockOutsideCurrentDirectory with eta templates", () => {
@@ -536,5 +540,94 @@ Deno.test("Eta template support", async (t) => {
     const result = rule.condition(createContext("test"));
     assert(result?.action === "confirm");
     assert(result?.reason === "test command requires confirmation");
+  });
+});
+
+Deno.test("Shell expansion detection", async (t) => {
+  await t.step("warnShellExpansion should warn commands starting with $(", () => {
+    const rule = warnShellExpansion();
+    
+    const result1 = rule.condition(createContext("$(echo hello)"));
+    assert(result1?.action === "warning");
+    assert(result1?.reason?.includes("Shell command syntax detected"));
+    assert(result1?.reason?.includes("cannot be expanded"));
+    assert(result1?.reason?.includes("Add acknowledgeWarnings: [\"warn-shell-expansion\"]"));
+    
+    const result2 = rule.condition(createContext("ls"));
+    assert(result2 === null);
+  });
+  
+  await t.step("warnShellExpansion should warn commands starting with `", () => {
+    const rule = warnShellExpansion();
+    
+    const result1 = rule.condition(createContext("`echo hello`"));
+    assert(result1?.action === "warning");
+    assert(result1?.reason?.includes("Shell command syntax detected"));
+    assert(result1?.reason?.includes("cannot be expanded"));
+    
+    const result2 = rule.condition(createContext("cat"));
+    assert(result2 === null);
+  });
+  
+  await t.step("warnShellExpansion should warn args containing shell patterns", () => {
+    const rule = warnShellExpansion();
+    
+    const result1 = rule.condition(createContext("echo", ["$(whoami)", "test"]));
+    assert(result1?.action === "warning");
+    assert(result1?.reason?.includes("Shell command syntax detected"));
+    assert(result1?.reason?.includes("cannot be expanded"));
+    
+    const result2 = rule.condition(createContext("echo", ["`date`", "test"]));
+    assert(result2?.action === "warning");
+    assert(result2?.reason?.includes("Shell command syntax detected"));
+    assert(result2?.reason?.includes("cannot be expanded"));
+    
+    const result3 = rule.condition(createContext("echo", ["hello", "world"]));
+    assert(result3 === null);
+  });
+  
+  await t.step("warnShellExpansion should detect partial matches in commands", () => {
+    const rule = warnShellExpansion();
+    
+    // 部分一致のテスト
+    const result1 = rule.condition(createContext("echo $(whoami)"));
+    assert(result1?.action === "warning");
+    assert(result1?.reason?.includes("Shell command syntax detected"));
+    
+    const result2 = rule.condition(createContext("ls `date`"));
+    assert(result2?.action === "warning");
+    assert(result2?.reason?.includes("Shell command syntax detected"));
+    
+    const result3 = rule.condition(createContext("cat file.txt"));
+    assert(result3 === null);
+  });
+  
+  await t.step("warnShellExpansion should approve when warn-shell-expansion is acknowledged", () => {
+    const rule = warnShellExpansion();
+    
+    const result = rule.condition(createContext("$(ls)", [], undefined, ["warn-shell-expansion"]));
+    assert(result?.action === "approve");
+    assert(result?.reason?.includes("warning acknowledged"));
+  });
+  
+  await t.step("warnShellExpansion with custom reason template", () => {
+    const rule = warnShellExpansion(
+      "Custom shell expansion warning: <%= it.command %> in session <%= it.sessionId %>"
+    );
+    
+    const result = rule.condition(createContext("$(ls)"));
+    assert(result?.action === "warning");
+    assert(result?.reason === "Custom shell expansion warning: $(ls) in session test-session");
+  });
+  
+  await t.step("warnShellExpansion rule name", () => {
+    const rule = warnShellExpansion();
+    assert(rule.name === "warn-shell-expansion");
+  });
+  
+  await t.step("blockShellExecution backward compatibility", () => {
+    const rule = blockShellExecution();
+    const result = rule.condition(createContext("$(ls)"));
+    assert(result?.action === "warning"); // Now returns warning instead of block
   });
 });

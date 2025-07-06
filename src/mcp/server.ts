@@ -42,8 +42,12 @@ export async function createMcpServer(): Promise<McpServer> {
       cwd: z.string().optional().describe(
         "Working directory for the command execution. If not provided, uses the current working directory.",
       ),
+      acknowledgeWarnings: z.array(z.string()).optional().describe(
+        "Array of warning names to acknowledge (e.g. ['warn-shell-expansion', 'warn-dangerous-flags']). Used to bypass specific warnings after understanding the risks.",
+      ),
     },
-  }, async ({ command, args, stdin, stdinForOutput, cwd }) => {
+  }, async ({ command, args, stdin, stdinForOutput, cwd, acknowledgeWarnings }) => {
+    // acknowledgeWarnings はルールチェックでのみ使用し、実際のコマンド実行には渡さない
     const stdinContent = await (async () => {
       if (stdin && stdinForOutput) {
         throw new Error(

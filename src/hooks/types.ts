@@ -37,6 +37,7 @@ export const ToolInputRunSchema = z.object({
   stdin: z.string().optional(),
   stdinForOutput: z.string().optional(),
   cwd: z.string().optional(),
+  acknowledgeWarnings: z.array(z.string()).optional(),
 });
 
 export type ToolInputRun = z.infer<typeof ToolInputRunSchema>;

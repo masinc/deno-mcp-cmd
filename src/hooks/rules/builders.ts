@@ -45,6 +45,11 @@ function createTemplateData(
   // Merge additional rule-specific data
   const mergedData = { ...baseData, ...additionalData };
   
+  // Auto-generate actionVerb if action is provided but actionVerb is not
+  if (mergedData.action && !mergedData.actionVerb) {
+    mergedData.actionVerb = getActionVerb(mergedData.action);
+  }
+  
   return mergedData as RuleTemplateData;
 }
 
@@ -57,8 +62,8 @@ export function createCommandRule(
   const commandList = Array.isArray(commands) ? commands : [commands];
   const actionVerb = getActionVerb(action);
   const name = commandList.length === 1 
-    ? `${action}_${commandList[0]}`
-    : `${action}_commands_${commandList.join("_")}`;
+    ? `${action}-${commandList[0]}`
+    : `${action}-commands-${commandList.join("-")}`;
 
   return {
     name,
@@ -68,7 +73,6 @@ export function createCommandRule(
         const finalReason = reason 
           ? renderReason(reason, createTemplateData(ctx, {
               action,
-              actionVerb,
             }))
           : defaultReason;
         
@@ -108,6 +112,7 @@ export function approveCommands(commands: string[], reason?: string): Rule {
 function getActionVerb(action: RuleAction): string {
   switch (action) {
     case "block": return "blocked";
+    case "warning": return "warned";
     case "confirm": return "requires confirmation";
     case "approve": return "approved";
     case "skip": return "skipped";
@@ -121,7 +126,7 @@ export function blockCommandWithFlags(
   reason?: string
 ): Rule {
   return {
-    name: `block_${command}_with_flags`,
+    name: `block-${command}-with-flags`,
     condition: (ctx) => {
       if (ctx.toolInput.command === command) {
         const hasDangerous = ctx.toolInput.args?.some((arg) =>
@@ -134,8 +139,7 @@ export function blockCommandWithFlags(
           const defaultReason = `${command} with dangerous flags: ${foundFlags?.join(", ")}`;
           const finalReason = reason
             ? renderReason(reason, createTemplateData(ctx, {
-                dangerousFlags: foundFlags,
-                flagCount: foundFlags?.length || 0,
+                action: "block",
               }))
             : defaultReason;
 
@@ -153,7 +157,7 @@ export function blockCommandWithFlags(
 // Path-based rules
 export function blockOutsideCurrentDirectory(reason?: string): Rule {
   return {
-    name: "block_outside_current_directory",
+    name: "block-outside-current-directory",
     condition: (ctx) => {
       const args = ctx.toolInput.args || [];
       if (args.length === 0) return null;
@@ -161,7 +165,9 @@ export function blockOutsideCurrentDirectory(reason?: string): Rule {
       if (!isAllPathsWithinCurrentDirectory(args, ctx.toolInput.cwd)) {
         const defaultReason = "Operations outside current directory not allowed";
         const finalReason = reason
-          ? renderReason(reason, createTemplateData(ctx))
+          ? renderReason(reason, createTemplateData(ctx, {
+              action: "block",
+            }))
           : defaultReason;
 
         return {
@@ -201,6 +207,55 @@ export function createRule(
   };
 }
 
+// Shell command execution detection rule with warning
+export function warnShellExpansion(reason?: string): Rule {
+  return {
+    name: "warn-shell-expansion",
+    condition: (ctx) => {
+      // Check if command contains shell execution patterns
+      const shellPatterns = ["$(", "`"];
+      const hasShellCommand = shellPatterns.some(pattern => 
+        ctx.toolInput.command.includes(pattern)
+      );
+      
+      // Check if any args contain shell execution patterns
+      const hasShellArgs = ctx.toolInput.args?.some(arg => 
+        shellPatterns.some(pattern => arg.includes(pattern))
+      );
+
+      if (hasShellCommand || hasShellArgs) {
+        // If warning is acknowledged, approve the command
+        if (ctx.toolInput.acknowledgeWarnings?.includes("warn-shell-expansion")) {
+          return { 
+            action: "approve", 
+            reason: "Shell expansion warning acknowledged - command allowed but may not work as expected" 
+          };
+        }
+        
+        // Otherwise, issue warning
+        const defaultReason = `Shell command syntax detected in '${ctx.toolInput.command}'. Backticks (\`) and command substitution ($()) cannot be expanded in this environment. Add acknowledgeWarnings: ["warn-shell-expansion"] if you understand this limitation and want to proceed anyway.`;
+        const finalReason = reason
+          ? renderReason(reason, createTemplateData(ctx, {
+              action: "warning",
+            }))
+          : defaultReason;
+
+        return { action: "warning", reason: finalReason };
+      }
+      return null;
+    },
+  };
+}
+
+// Keep old functions for backward compatibility
+export function warnShellExecution(reason?: string): Rule {
+  return warnShellExpansion(reason);
+}
+
+export function blockShellExecution(reason?: string): Rule {
+  return warnShellExpansion(reason);
+}
+
 // Pattern-based rules (for regex or glob patterns)
 export function createPatternRule(
   action: RuleAction,
@@ -209,7 +264,7 @@ export function createPatternRule(
 ): Rule {
   const actionVerb = getActionDescription(action);
   return {
-    name: `${action}_pattern_${pattern.source}`,
+    name: `${action}-pattern-${pattern.source}`,
     condition: (ctx) => {
       if (pattern.test(ctx.toolInput.command)) {
         const defaultReason = `Command matches ${actionVerb} pattern: ${pattern}`;
@@ -217,7 +272,6 @@ export function createPatternRule(
           ? renderReason(reason, createTemplateData(ctx, {
               pattern: pattern.source,
               action,
-              actionVerb,
             }))
           : defaultReason;
 
@@ -245,6 +299,7 @@ export function approveCommandPattern(pattern: RegExp, reason?: string): Rule {
 function getActionDescription(action: RuleAction): string {
   switch (action) {
     case "block": return "blocked";
+    case "warning": return "warning";
     case "confirm": return "confirmation";
     case "approve": return "approval";
     case "skip": return "skip";
