@@ -1,18 +1,18 @@
-import { createWarningRule, createRule } from "../rules/builders.ts";
+import { createRule, createWarningRule } from "../rules/builders.ts";
 import type { Rule, RuleContext } from "../rules/types.ts";
-import { 
-  PathPatternSchema,
-  type UserRule, 
-  type UserRulesConfig,
-  type BlockCommandRule, 
+import {
   type ApproveCommandRule,
-  type ConfirmCommandRule,
-  type WarningRule as UserWarningRule, 
-  type ConditionalRule, 
-  type LocationRule,
-  type CommandPattern,
   type ArgsPattern,
+  type BlockCommandRule,
+  type CommandPattern,
+  type ConditionalRule,
+  type ConfirmCommandRule,
+  type LocationRule,
   type PathPattern,
+  PathPatternSchema,
+  type UserRule,
+  type UserRulesConfig,
+  type WarningRule as UserWarningRule,
 } from "./schema.ts";
 
 /**
@@ -50,18 +50,26 @@ function convertBlockCommandRule(rule: BlockCommandRule): Rule {
     "block",
     (ctx) => {
       // Check if any of the specified patterns match
-      if (rule.spec.command && !matchesCommandPattern(ctx.toolInput.command, rule.spec.command)) {
+      if (
+        rule.spec.command &&
+        !matchesCommandPattern(ctx.toolInput.command, rule.spec.command)
+      ) {
         return false;
       }
-      if (rule.spec.args && !matchesArgsPattern(ctx.toolInput.args || [], rule.spec.args)) {
+      if (
+        rule.spec.args &&
+        !matchesArgsPattern(ctx.toolInput.args || [], rule.spec.args)
+      ) {
         return false;
       }
-      if (rule.spec.cwd && !matchesCwdPattern(ctx.toolInput.cwd, rule.spec.cwd)) {
+      if (
+        rule.spec.cwd && !matchesCwdPattern(ctx.toolInput.cwd, rule.spec.cwd)
+      ) {
         return false;
       }
       return true;
     },
-    rule.spec.reason || `BlockCommandRule: ${rule.name}`
+    rule.spec.reason || `BlockCommandRule: ${rule.name}`,
   );
 }
 
@@ -71,18 +79,26 @@ function convertApproveCommandRule(rule: ApproveCommandRule): Rule {
     "approve",
     (ctx) => {
       // Check if any of the specified patterns match
-      if (rule.spec.command && !matchesCommandPattern(ctx.toolInput.command, rule.spec.command)) {
+      if (
+        rule.spec.command &&
+        !matchesCommandPattern(ctx.toolInput.command, rule.spec.command)
+      ) {
         return false;
       }
-      if (rule.spec.args && !matchesArgsPattern(ctx.toolInput.args || [], rule.spec.args)) {
+      if (
+        rule.spec.args &&
+        !matchesArgsPattern(ctx.toolInput.args || [], rule.spec.args)
+      ) {
         return false;
       }
-      if (rule.spec.cwd && !matchesCwdPattern(ctx.toolInput.cwd, rule.spec.cwd)) {
+      if (
+        rule.spec.cwd && !matchesCwdPattern(ctx.toolInput.cwd, rule.spec.cwd)
+      ) {
         return false;
       }
       return true;
     },
-    rule.spec.reason || `ApproveCommandRule: ${rule.name}`
+    rule.spec.reason || `ApproveCommandRule: ${rule.name}`,
   );
 }
 
@@ -92,18 +108,26 @@ function convertConfirmCommandRule(rule: ConfirmCommandRule): Rule {
     "confirm",
     (ctx) => {
       // Check if any of the specified patterns match
-      if (rule.spec.command && !matchesCommandPattern(ctx.toolInput.command, rule.spec.command)) {
+      if (
+        rule.spec.command &&
+        !matchesCommandPattern(ctx.toolInput.command, rule.spec.command)
+      ) {
         return false;
       }
-      if (rule.spec.args && !matchesArgsPattern(ctx.toolInput.args || [], rule.spec.args)) {
+      if (
+        rule.spec.args &&
+        !matchesArgsPattern(ctx.toolInput.args || [], rule.spec.args)
+      ) {
         return false;
       }
-      if (rule.spec.cwd && !matchesCwdPattern(ctx.toolInput.cwd, rule.spec.cwd)) {
+      if (
+        rule.spec.cwd && !matchesCwdPattern(ctx.toolInput.cwd, rule.spec.cwd)
+      ) {
         return false;
       }
       return true;
     },
-    rule.spec.reason || rule.spec.message || `ConfirmCommandRule: ${rule.name}`
+    rule.spec.reason || rule.spec.message || `ConfirmCommandRule: ${rule.name}`,
   );
 }
 
@@ -142,22 +166,31 @@ function convertLocationRule(rule: LocationRule): Rule {
     rule.spec.action,
     (ctx) => {
       const { command, cwd } = ctx.toolInput;
-      
+
       // Check if command is in allowed list (if specified)
       if (rule.spec.commands && !rule.spec.commands.includes(command)) {
         return false;
       }
 
       // Check path conditions
-      if (rule.spec.paths.startsWith && cwd && cwd.startsWith(rule.spec.paths.startsWith)) {
+      if (
+        rule.spec.paths.startsWith && cwd &&
+        cwd.startsWith(rule.spec.paths.startsWith)
+      ) {
         return true; // Trigger if inside specified path
       }
 
-      if (rule.spec.paths.outside && cwd && !cwd.startsWith(rule.spec.paths.outside)) {
+      if (
+        rule.spec.paths.outside && cwd &&
+        !cwd.startsWith(rule.spec.paths.outside)
+      ) {
         return true; // Trigger if outside allowed path
       }
 
-      if (rule.spec.paths.contains && cwd && cwd.includes(rule.spec.paths.contains)) {
+      if (
+        rule.spec.paths.contains && cwd &&
+        cwd.includes(rule.spec.paths.contains)
+      ) {
         return true; // Trigger if path contains specified string
       }
 
@@ -165,13 +198,15 @@ function convertLocationRule(rule: LocationRule): Rule {
       const pathsResult = PathPatternSchema.safeParse(rule.spec.paths);
       if (pathsResult.success) {
         const paths = pathsResult.data;
-        
+
         if (paths.isSubdirectory !== undefined && cwd) {
           // For now, we'll check if the path has more than a certain depth
           // This is a simplified implementation - ideally we'd compare against initial working directory
-          const pathSegments = cwd.split('/').filter(segment => segment.length > 0);
+          const pathSegments = cwd.split("/").filter((segment) =>
+            segment.length > 0
+          );
           const isDeepPath = pathSegments.length > 2; // More than just /home/user level
-          
+
           if (paths.isSubdirectory === true && isDeepPath) {
             return true; // Trigger if we want subdirectories and this is a deep path
           }
@@ -201,10 +236,16 @@ function matchesPatterns(ctx: RuleContext, patterns: {
   args?: ArgsPattern;
   cwd?: PathPattern;
 }): boolean {
-  if (patterns.command && !matchesCommandPattern(ctx.toolInput.command, patterns.command)) {
+  if (
+    patterns.command &&
+    !matchesCommandPattern(ctx.toolInput.command, patterns.command)
+  ) {
     return false;
   }
-  if (patterns.args && !matchesArgsPattern(ctx.toolInput.args || [], patterns.args)) {
+  if (
+    patterns.args &&
+    !matchesArgsPattern(ctx.toolInput.args || [], patterns.args)
+  ) {
     return false;
   }
   if (patterns.cwd && !matchesCwdPattern(ctx.toolInput.cwd, patterns.cwd)) {
@@ -217,10 +258,15 @@ function evaluateCondition(ctx: RuleContext, condition: string): boolean {
   try {
     // Create safe evaluation context
     const { command, args = [], cwd } = ctx.toolInput;
-    
+
     // Simple expression evaluation with limited scope
     // Note: This is a basic implementation. For production, consider using a safer evaluator
-    const func = new Function("command", "args", "cwd", `return (${condition})`);
+    const func = new Function(
+      "command",
+      "args",
+      "cwd",
+      `return (${condition})`,
+    );
     return Boolean(func(command, args, cwd));
   } catch (error) {
     console.warn(`Conditional rule evaluation failed: ${error}`);
@@ -228,60 +274,77 @@ function evaluateCondition(ctx: RuleContext, condition: string): boolean {
   }
 }
 
-
-function matchesCommandPattern(command: string, pattern: CommandPattern): boolean {
+function matchesCommandPattern(
+  command: string,
+  pattern: CommandPattern,
+): boolean {
   if (typeof pattern === "string") {
     return command === pattern;
   }
-  
+
   if (pattern.exact) return command === pattern.exact;
   if (pattern.oneOf) return pattern.oneOf.includes(command);
   if (pattern.regex) return new RegExp(pattern.regex).test(command);
   if (pattern.startsWith) return command.startsWith(pattern.startsWith);
   if (pattern.endsWith) return command.endsWith(pattern.endsWith);
-  
+
   return false;
 }
 
 function matchesArgsPattern(args: string[], pattern: ArgsPattern): boolean {
-  if (pattern.containsAny && !pattern.containsAny.some(arg => args.includes(arg))) {
+  if (
+    pattern.containsAny &&
+    !pattern.containsAny.some((arg) => args.includes(arg))
+  ) {
     return false;
   }
-  
-  if (pattern.containsAll && !pattern.containsAll.every(arg => args.includes(arg))) {
+
+  if (
+    pattern.containsAll &&
+    !pattern.containsAll.every((arg) => args.includes(arg))
+  ) {
     return false;
   }
-  
-  if (pattern.containsNone && pattern.containsNone.some(arg => args.includes(arg))) {
+
+  if (
+    pattern.containsNone &&
+    pattern.containsNone.some((arg) => args.includes(arg))
+  ) {
     return false;
   }
-  
+
   if (pattern.exact && JSON.stringify(args) !== JSON.stringify(pattern.exact)) {
     return false;
   }
-  
+
   if (pattern.startsWith && !matchesArgsStartsWith(args, pattern.startsWith)) {
     return false;
   }
-  
-  if (pattern.regexAny && !args.some(arg => new RegExp(pattern.regexAny!).test(arg))) {
+
+  if (
+    pattern.regexAny &&
+    !args.some((arg) => new RegExp(pattern.regexAny!).test(arg))
+  ) {
     return false;
   }
-  
-  if (pattern.regexAll && !pattern.regexAll.every(regexPattern => 
-    args.some(arg => new RegExp(regexPattern).test(arg))
-  )) {
+
+  if (
+    pattern.regexAll &&
+    !pattern.regexAll.every((regexPattern) =>
+      args.some((arg) => new RegExp(regexPattern).test(arg))
+    )
+  ) {
     return false;
   }
-  
+
   if (pattern.minLength !== undefined && args.length < pattern.minLength) {
     return false;
   }
-  
+
   if (pattern.maxLength !== undefined && args.length > pattern.maxLength) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -290,30 +353,33 @@ function matchesArgsStartsWith(args: string[], prefixes: string[]): boolean {
   if (args.length === 0) {
     return false;
   }
-  
+
   const firstArg = args[0];
-  return prefixes.some(prefix => firstArg.startsWith(prefix));
+  return prefixes.some((prefix) => firstArg.startsWith(prefix));
 }
 
-function matchesCwdPattern(cwd: string | undefined, pattern: PathPattern): boolean {
+function matchesCwdPattern(
+  cwd: string | undefined,
+  pattern: PathPattern,
+): boolean {
   if (!cwd) return false;
-  
+
   if (pattern.startsWith && !cwd.startsWith(pattern.startsWith)) {
     return false;
   }
-  
+
   if (pattern.contains && !cwd.includes(pattern.contains)) {
     return false;
   }
-  
+
   if (pattern.regex && !new RegExp(pattern.regex).test(cwd)) {
     return false;
   }
-  
+
   if (pattern.outside && cwd.startsWith(pattern.outside)) {
     return false;
   }
-  
+
   return true;
 }
 

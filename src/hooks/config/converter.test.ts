@@ -1,12 +1,12 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { convertUserRuleToRule } from "./converter.ts";
-import type { 
-  BlockCommandRule, 
+import type {
   ApproveCommandRule,
+  BlockCommandRule,
+  ConditionalRule,
   ConfirmCommandRule,
-  WarningRule, 
-  ConditionalRule, 
-  LocationRule 
+  LocationRule,
+  WarningRule,
 } from "./schema.ts";
 import type { RuleContext, RuleResult } from "../rules/types.ts";
 import { RuleResultSchema } from "../rules/types.ts";
@@ -18,7 +18,9 @@ function assertRuleAction(result: RuleResult | null, expectedAction: string) {
     const parsedResult = RuleResultSchema.parse(result);
     assertEquals(parsedResult.action, expectedAction);
   } else {
-    throw new Error(`Expected RuleResult with action "${expectedAction}" but got null`);
+    throw new Error(
+      `Expected RuleResult with action "${expectedAction}" but got null`,
+    );
   }
 }
 
@@ -26,7 +28,7 @@ function assertRuleAction(result: RuleResult | null, expectedAction: string) {
 function createMockContext(
   command: string,
   args: string[] = [],
-  cwd?: string
+  cwd?: string,
 ): RuleContext {
   return {
     toolInput: {
@@ -45,8 +47,8 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
       enabled: true,
       spec: {
         command: "sudo",
-        reason: "Sudo access not allowed"
-      }
+        reason: "Sudo access not allowed",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -65,12 +67,12 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
       enabled: true,
       spec: {
         command: { oneOf: ["rm", "mv", "chmod"] },
-        reason: "Dangerous commands blocked"
-      }
+        reason: "Dangerous commands blocked",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it blocks rm command
     const ctx1 = createMockContext("rm", ["-rf", "/"]);
     const result1 = rule.condition(ctx1);
@@ -84,17 +86,17 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
   await t.step("converts args pattern", () => {
     const userRule: BlockCommandRule = {
       name: "block-force",
-      kind: "BlockCommandRule", 
+      kind: "BlockCommandRule",
       enabled: true,
       spec: {
         command: "rm",
         args: { containsAny: ["--force", "-f"] },
-        reason: "Force deletion blocked"
-      }
+        reason: "Force deletion blocked",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it blocks rm with force flag
     const ctx1 = createMockContext("rm", ["--force", "file.txt"]);
     assertEquals(rule.condition(ctx1)?.action, "block");
@@ -107,17 +109,17 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
   await t.step("converts args pattern with containsAll", () => {
     const userRule: BlockCommandRule = {
       name: "block-dangerous-combo",
-      kind: "BlockCommandRule", 
+      kind: "BlockCommandRule",
       enabled: true,
       spec: {
         command: "rm",
         args: { containsAll: ["--force", "--recursive"] },
-        reason: "Dangerous combination blocked"
-      }
+        reason: "Dangerous combination blocked",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it blocks rm with both flags
     const ctx1 = createMockContext("rm", ["--force", "--recursive", "dir"]);
     assertEquals(rule.condition(ctx1)?.action, "block");
@@ -125,7 +127,7 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
     // Test that it doesn't block rm with only one flag
     const ctx2 = createMockContext("rm", ["--force", "file.txt"]);
     assertEquals(rule.condition(ctx2), null);
-    
+
     // Test that it doesn't block rm with only the other flag
     const ctx3 = createMockContext("rm", ["--recursive", "dir"]);
     assertEquals(rule.condition(ctx3), null);
@@ -134,59 +136,68 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
   await t.step("converts args pattern with containsNone", () => {
     const userRule: ApproveCommandRule = {
       name: "approve-git-safe-branch",
-      kind: "ApproveCommandRule", 
+      kind: "ApproveCommandRule",
       enabled: true,
       spec: {
         command: "git",
-        args: { 
+        args: {
           startsWith: ["branch"],
-          containsNone: ["-d", "--delete", "-m", "--move"]
+          containsNone: ["-d", "--delete", "-m", "--move"],
         },
-        reason: "Safe git branch operations allowed"
-      }
+        reason: "Safe git branch operations allowed",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it approves safe git branch operations
     const ctx1 = createMockContext("git", ["branch"]);
     assertEquals(rule.condition(ctx1)?.action, "approve");
-    
+
     const ctx2 = createMockContext("git", ["branch", "--list"]);
     assertEquals(rule.condition(ctx2)?.action, "approve");
-    
+
     const ctx3 = createMockContext("git", ["branch", "-v"]);
     assertEquals(rule.condition(ctx3)?.action, "approve");
 
     // Test that it doesn't approve destructive operations
     const ctx4 = createMockContext("git", ["branch", "-d", "feature-branch"]);
     assertEquals(rule.condition(ctx4), null);
-    
-    const ctx5 = createMockContext("git", ["branch", "--delete", "feature-branch"]);
+
+    const ctx5 = createMockContext("git", [
+      "branch",
+      "--delete",
+      "feature-branch",
+    ]);
     assertEquals(rule.condition(ctx5), null);
-    
-    const ctx6 = createMockContext("git", ["branch", "-m", "old-name", "new-name"]);
+
+    const ctx6 = createMockContext("git", [
+      "branch",
+      "-m",
+      "old-name",
+      "new-name",
+    ]);
     assertEquals(rule.condition(ctx6), null);
   });
 
   await t.step("converts args pattern with startsWith", () => {
     const userRule: BlockCommandRule = {
       name: "approve-git-log",
-      kind: "BlockCommandRule", 
+      kind: "BlockCommandRule",
       enabled: true,
       spec: {
         command: "git",
         args: { startsWith: ["log"] },
-        reason: "Only git log commands with additional args blocked"
-      }
+        reason: "Only git log commands with additional args blocked",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it blocks git log --oneline (starts with ["log"])
     const ctx1 = createMockContext("git", ["log", "--oneline"]);
     assertEquals(rule.condition(ctx1)?.action, "block");
-    
+
     // Test that it blocks git log (exact match)
     const ctx2 = createMockContext("git", ["log"]);
     assertEquals(rule.condition(ctx2)?.action, "block");
@@ -194,11 +205,11 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
     // Test that it blocks git log --pretty=format:%H (starts with ["log"])
     const ctx3 = createMockContext("git", ["log", "--pretty=format:%H"]);
     assertEquals(rule.condition(ctx3)?.action, "block");
-    
+
     // Test that it doesn't block git push (different prefix)
     const ctx4 = createMockContext("git", ["push"]);
     assertEquals(rule.condition(ctx4), null);
-    
+
     // Test that it doesn't block git status (different prefix)
     const ctx5 = createMockContext("git", ["status"]);
     assertEquals(rule.condition(ctx5), null);
@@ -207,25 +218,29 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
   await t.step("converts args pattern with regexAll", () => {
     const userRule: BlockCommandRule = {
       name: "block-user-group-combo",
-      kind: "BlockCommandRule", 
+      kind: "BlockCommandRule",
       enabled: true,
       spec: {
         command: "useradd",
         args: { regexAll: ["--uid=\\d+", "--gid=\\d+"] },
-        reason: "Both UID and GID specification required"
-      }
+        reason: "Both UID and GID specification required",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it blocks when both regex patterns match
-    const ctx1 = createMockContext("useradd", ["--uid=1000", "--gid=1000", "testuser"]);
+    const ctx1 = createMockContext("useradd", [
+      "--uid=1000",
+      "--gid=1000",
+      "testuser",
+    ]);
     assertEquals(rule.condition(ctx1)?.action, "block");
 
     // Test that it doesn't block when only one pattern matches
     const ctx2 = createMockContext("useradd", ["--uid=1000", "testuser"]);
     assertEquals(rule.condition(ctx2), null);
-    
+
     // Test that it doesn't block when the other pattern matches
     const ctx3 = createMockContext("useradd", ["--gid=1000", "testuser"]);
     assertEquals(rule.condition(ctx3), null);
@@ -239,12 +254,12 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
       spec: {
         command: "rm",
         cwd: { startsWith: "/usr" },
-        reason: "System path modifications blocked"
-      }
+        reason: "System path modifications blocked",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it blocks in system path
     const ctx1 = createMockContext("rm", ["file"], "/usr/bin");
     assertEquals(rule.condition(ctx1)?.action, "block");
@@ -260,8 +275,8 @@ Deno.test("convertUserRuleToRule - BlockCommandRule", async (t) => {
       kind: "BlockCommandRule",
       enabled: false,
       spec: {
-        command: "sudo"
-      }
+        command: "sudo",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -281,8 +296,8 @@ Deno.test("convertUserRuleToRule - ApproveCommandRule", async (t) => {
       enabled: true,
       spec: {
         command: "ls",
-        reason: "Safe directory listing command"
-      }
+        reason: "Safe directory listing command",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -301,12 +316,12 @@ Deno.test("convertUserRuleToRule - ApproveCommandRule", async (t) => {
       enabled: true,
       spec: {
         command: { oneOf: ["ls", "pwd", "whoami"] },
-        reason: "Safe read-only commands"
-      }
+        reason: "Safe read-only commands",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it approves ls command
     const ctx1 = createMockContext("ls", []);
     const result1 = rule.condition(ctx1);
@@ -330,14 +345,18 @@ Deno.test("convertUserRuleToRule - ApproveCommandRule", async (t) => {
       spec: {
         command: { oneOf: ["npm", "yarn", "node"] },
         cwd: { contains: "projects" },
-        reason: "Development tools in projects directory"
-      }
+        reason: "Development tools in projects directory",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it approves npm in projects directory
-    const ctx1 = createMockContext("npm", ["install"], "/home/user/projects/myapp");
+    const ctx1 = createMockContext(
+      "npm",
+      ["install"],
+      "/home/user/projects/myapp",
+    );
     const result1 = rule.condition(ctx1);
     assertRuleAction(result1, "approve");
 
@@ -352,8 +371,8 @@ Deno.test("convertUserRuleToRule - ApproveCommandRule", async (t) => {
       kind: "ApproveCommandRule",
       enabled: false,
       spec: {
-        command: "ls"
-      }
+        command: "ls",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -374,15 +393,19 @@ Deno.test("convertUserRuleToRule - ConfirmCommandRule", async (t) => {
       spec: {
         args: { regexAny: "prod|production" },
         reason: "Production deployment requires confirmation",
-        message: "Deploy to production environment?"
-      }
+        message: "Deploy to production environment?",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
     assertEquals(rule.name, "confirm-prod-deploy");
 
     // Test that it requires confirmation for production deployment
-    const ctx = createMockContext("kubectl", ["apply", "-f", "prod-config.yaml"]);
+    const ctx = createMockContext("kubectl", [
+      "apply",
+      "-f",
+      "prod-config.yaml",
+    ]);
     const result = rule.condition(ctx);
     assertRuleAction(result, "confirm");
   });
@@ -395,12 +418,12 @@ Deno.test("convertUserRuleToRule - ConfirmCommandRule", async (t) => {
       spec: {
         command: "kubectl",
         args: { startsWith: ["apply"] },
-        reason: "Kubernetes changes require confirmation"
-      }
+        reason: "Kubernetes changes require confirmation",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it requires confirmation for kubectl apply
     const ctx1 = createMockContext("kubectl", ["apply", "-f", "config.yaml"]);
     const result1 = rule.condition(ctx1);
@@ -419,12 +442,12 @@ Deno.test("convertUserRuleToRule - ConfirmCommandRule", async (t) => {
       spec: {
         cwd: { startsWith: "/etc" },
         reason: "System configuration changes need approval",
-        message: "Modify system configuration files?"
-      }
+        message: "Modify system configuration files?",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it requires confirmation in /etc directory
     const ctx1 = createMockContext("nano", ["hosts"], "/etc");
     const result1 = rule.condition(ctx1);
@@ -443,14 +466,19 @@ Deno.test("convertUserRuleToRule - ConfirmCommandRule", async (t) => {
       spec: {
         args: { containsAll: ["--force", "--yes"] },
         reason: "Multiple force flags detected",
-        message: "Execute potentially dangerous operation?"
-      }
+        message: "Execute potentially dangerous operation?",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it requires confirmation for operations with both force flags
-    const ctx1 = createMockContext("rm", ["--force", "--yes", "--recursive", "dir"]);
+    const ctx1 = createMockContext("rm", [
+      "--force",
+      "--yes",
+      "--recursive",
+      "dir",
+    ]);
     const result1 = rule.condition(ctx1);
     assertRuleAction(result1, "confirm");
 
@@ -466,8 +494,8 @@ Deno.test("convertUserRuleToRule - ConfirmCommandRule", async (t) => {
       enabled: false,
       spec: {
         command: "kubectl",
-        reason: "Disabled rule"
-      }
+        reason: "Disabled rule",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -486,12 +514,12 @@ Deno.test("convertUserRuleToRule - ConfirmCommandRule", async (t) => {
       spec: {
         command: "test",
         reason: "Test reason",
-        message: "Test message"
-      }
+        message: "Test message",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that the rule is created successfully (message priority is handled in createRule)
     const ctx = createMockContext("test", []);
     const result = rule.condition(ctx);
@@ -508,12 +536,12 @@ Deno.test("convertUserRuleToRule - WarningRule", async (t) => {
       spec: {
         patterns: {
           command: "docker",
-          args: { containsAny: ["--privileged"] }
+          args: { containsAny: ["--privileged"] },
         },
         warningReason: "Privileged container detected",
         acknowledgedAction: "skip",
-        acknowledgedReason: "Acknowledged"
-      }
+        acknowledgedReason: "Acknowledged",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -537,12 +565,12 @@ Deno.test("convertUserRuleToRule - WarningRule", async (t) => {
       spec: {
         patterns: {
           command: "docker",
-          args: { containsAny: ["--privileged"] }
+          args: { containsAny: ["--privileged"] },
         },
         warningReason: "Privileged container detected",
         acknowledgedAction: "approve",
-        acknowledgedReason: "User approved privileged container"
-      }
+        acknowledgedReason: "User approved privileged container",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -557,7 +585,7 @@ Deno.test("convertUserRuleToRule - WarningRule", async (t) => {
       toolInput: {
         command: "docker",
         args: ["run", "--privileged", "image"],
-        acknowledgeWarnings: ["warn-docker-privileged"]
+        acknowledgeWarnings: ["warn-docker-privileged"],
       },
     } as RuleContext;
     const result2 = rule.condition(ctx2);
@@ -572,15 +600,15 @@ Deno.test("convertUserRuleToRule - WarningRule", async (t) => {
       spec: {
         patterns: {
           command: { regex: "^(curl|wget)$" },
-          cwd: { contains: "sensitive" }
+          cwd: { contains: "sensitive" },
         },
         warningReason: "Network access in sensitive directory",
-        acknowledgedAction: "confirm"
-      }
+        acknowledgedAction: "confirm",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it warns when both patterns match
     const ctx1 = createMockContext("curl", ["example.com"], "/sensitive/dir");
     const result1 = rule.condition(ctx1);
@@ -599,23 +627,32 @@ Deno.test("convertUserRuleToRule - ConditionalRule", async (t) => {
       kind: "ConditionalRule",
       enabled: true,
       spec: {
-        condition: "command === 'kubectl' && args.some(arg => arg.includes('prod'))",
+        condition:
+          "command === 'kubectl' && args.some(arg => arg.includes('prod'))",
         action: "warning",
         message: "Production deployment detected",
-        reason: "Requires confirmation"
-      }
+        reason: "Requires confirmation",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
     assertEquals(rule.name, "confirm-prod");
 
     // Test that it triggers for production kubectl
-    const ctx1 = createMockContext("kubectl", ["apply", "-f", "prod-config.yaml"]);
+    const ctx1 = createMockContext("kubectl", [
+      "apply",
+      "-f",
+      "prod-config.yaml",
+    ]);
     const result1 = rule.condition(ctx1);
     assertEquals(typeof result1, "object");
 
     // Test that it doesn't trigger for non-production kubectl
-    const ctx2 = createMockContext("kubectl", ["apply", "-f", "dev-config.yaml"]);
+    const ctx2 = createMockContext("kubectl", [
+      "apply",
+      "-f",
+      "dev-config.yaml",
+    ]);
     assertEquals(rule.condition(ctx2), null);
   });
 
@@ -627,12 +664,12 @@ Deno.test("convertUserRuleToRule - ConditionalRule", async (t) => {
       spec: {
         condition: "args.includes('--force') && args.includes('--recursive')",
         action: "block",
-        reason: "Dangerous combination blocked"
-      }
+        reason: "Dangerous combination blocked",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it blocks dangerous combination
     const ctx1 = createMockContext("rm", ["--force", "--recursive", "dir"]);
     assertEquals(rule.condition(ctx1)?.action, "block");
@@ -649,12 +686,12 @@ Deno.test("convertUserRuleToRule - ConditionalRule", async (t) => {
       enabled: true,
       spec: {
         condition: "invalid.syntax.error()",
-        action: "block"
-      }
+        action: "block",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Should not throw and should return null for invalid conditions
     const ctx = createMockContext("test", []);
     assertEquals(rule.condition(ctx), null);
@@ -669,12 +706,12 @@ Deno.test("convertUserRuleToRule - LocationRule", async (t) => {
       enabled: true,
       spec: {
         paths: {
-          startsWith: "/usr"
+          startsWith: "/usr",
         },
         commands: ["rm", "mv", "chmod"],
         action: "block",
-        reason: "System directory protection"
-      }
+        reason: "System directory protection",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
@@ -700,15 +737,15 @@ Deno.test("convertUserRuleToRule - LocationRule", async (t) => {
       enabled: true,
       spec: {
         paths: {
-          outside: "/home"
+          outside: "/home",
         },
         action: "confirm",
-        reason: "Working outside home directory"
-      }
+        reason: "Working outside home directory",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it triggers when outside /home
     const ctx1 = createMockContext("ls", [], "/tmp");
     const result1 = rule.condition(ctx1);
@@ -726,17 +763,21 @@ Deno.test("convertUserRuleToRule - LocationRule", async (t) => {
       enabled: true,
       spec: {
         paths: {
-          contains: "node_modules"
+          contains: "node_modules",
         },
         action: "confirm",
-        reason: "Working in node_modules directory"
-      }
+        reason: "Working in node_modules directory",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test that it confirms in node_modules
-    const ctx1 = createMockContext("rm", ["file"], "/project/node_modules/package");
+    const ctx1 = createMockContext(
+      "rm",
+      ["file"],
+      "/project/node_modules/package",
+    );
     const result1 = rule.condition(ctx1);
     assertRuleAction(result1, "confirm");
 
@@ -752,14 +793,14 @@ Deno.test("convertUserRuleToRule - LocationRule", async (t) => {
       enabled: true,
       spec: {
         paths: {
-          startsWith: "/usr"
+          startsWith: "/usr",
         },
-        action: "block"
-      }
+        action: "block",
+      },
     };
 
     const rule = convertUserRuleToRule(userRule);
-    
+
     // Test with undefined cwd
     const ctx = createMockContext("rm", ["file"], undefined);
     assertEquals(rule.condition(ctx), null);
@@ -768,24 +809,24 @@ Deno.test("convertUserRuleToRule - LocationRule", async (t) => {
 
 Deno.test("convertUserRuleToRule - Error cases", async (t) => {
   await t.step("throws for unknown rule kind", () => {
-    // Create an invalid rule object 
+    // Create an invalid rule object
     const invalidRuleData = {
       name: "unknown-rule",
       kind: "UnknownKind",
       enabled: true,
-      spec: {}
+      spec: {},
     };
-    
+
     // Try to parse with Zod - this should fail at validation level
     const parseResult = UserRuleSchema.safeParse(invalidRuleData);
     assertEquals(parseResult.success, false);
-    
+
     // If somehow it passes validation (which it shouldn't), test the converter
     if (parseResult.success) {
       assertThrows(
         () => convertUserRuleToRule(parseResult.data),
         Error,
-        "Unknown rule kind"
+        "Unknown rule kind",
       );
     }
   });

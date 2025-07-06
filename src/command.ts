@@ -28,10 +28,10 @@ function normalizePath(path: string): string {
 
 /**
  * Executes a shell command using the worker pool with database tracking
- * 
+ *
  * Creates a database record for tracking execution progress and manages
  * the command lifecycle through the worker pool system.
- * 
+ *
  * @param command - The command to execute
  * @param options - Optional command execution options (args, cwd, stdin)
  * @returns Promise resolving to task result with execution ID and status
@@ -89,10 +89,10 @@ export async function runCommand(
 
 /**
  * Cancels a running command by its output ID
- * 
+ *
  * Attempts to cancel the command execution and updates the database
  * with cancellation status.
- * 
+ *
  * @param id - The output ID of the command to cancel
  * @returns Promise resolving to true if command was cancelled, false otherwise
  */
@@ -114,7 +114,7 @@ export async function cancelCommand(id: OutputId): Promise<boolean> {
 
 /**
  * Retrieves the current status of a command execution
- * 
+ *
  * @param id - The output ID of the command
  * @returns Promise resolving to command status or "not_found" if command doesn't exist
  */
@@ -133,7 +133,7 @@ export async function getCommandStatus(
 
 /**
  * Retrieves detailed progress information for a command execution
- * 
+ *
  * @param id - The output ID of the command
  * @returns Promise resolving to progress information including status, output, and metadata, or null if not found
  */
@@ -160,7 +160,7 @@ export async function getCommandProgress(id: OutputId) {
 
 /**
  * Gets the current status of the worker pool
- * 
+ *
  * @returns Current worker pool status including active workers and queued tasks
  */
 export function getWorkerPoolStatus() {
@@ -170,9 +170,9 @@ export function getWorkerPoolStatus() {
 
 /**
  * Waits for all currently running and queued commands to complete
- * 
+ *
  * Uses polling to check worker pool status until all tasks are finished.
- * 
+ *
  * @returns Promise that resolves when all commands are complete
  */
 export async function waitForAllCommands(): Promise<void> {
@@ -195,10 +195,10 @@ export async function waitForAllCommands(): Promise<void> {
 
 /**
  * Cleans up command execution resources
- * 
+ *
  * Terminates the worker pool and performs cleanup operations.
  * Called automatically on process signals (SIGINT, SIGTERM).
- * 
+ *
  * @returns Promise that resolves when cleanup is complete
  */
 export async function cleanup(): Promise<void> {

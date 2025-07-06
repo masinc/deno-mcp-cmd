@@ -13,7 +13,10 @@ import {
   ToolInputRunSchema,
 } from "../hooks/types.ts";
 import { evaluateRules } from "../hooks/rules/engine.ts";
-import { loadAndMergeUserRules, DEFAULT_CONFIG_PATHS } from "../hooks/config/loader.ts";
+import {
+  DEFAULT_CONFIG_PATHS,
+  loadAndMergeUserRules,
+} from "../hooks/config/loader.ts";
 import { convertUserRulesConfigToRules } from "../hooks/config/converter.ts";
 import type { RuleContext } from "../hooks/rules/types.ts";
 
@@ -31,11 +34,13 @@ async function readStdin(): Promise<string> {
 async function hookToolRun(input: PreToolUseInput): Promise<never> {
   // Normalize args if it's a string (convert to array)
   const normalizedToolInput = { ...input.tool_input };
-  if (typeof normalizedToolInput.args === 'string') {
+  if (typeof normalizedToolInput.args === "string") {
     // If args is a string, split it into array (handle quoted args properly)
-    normalizedToolInput.args = normalizedToolInput.args.split(' ').filter(arg => arg.length > 0);
+    normalizedToolInput.args = normalizedToolInput.args.split(" ").filter(
+      (arg) => arg.length > 0,
+    );
   }
-  
+
   const toolInputResult = ToolInputRunSchema.safeParse(normalizedToolInput);
   if (!toolInputResult.success) {
     console.error("Invalid tool input:", toolInputResult.error);
@@ -52,7 +57,9 @@ async function hookToolRun(input: PreToolUseInput): Promise<never> {
     timestamp: new Date(),
   };
 
-  const userRulesConfig = await loadAndMergeUserRules([...DEFAULT_CONFIG_PATHS]);
+  const userRulesConfig = await loadAndMergeUserRules([
+    ...DEFAULT_CONFIG_PATHS,
+  ]);
   const rules = convertUserRulesConfigToRules(userRulesConfig);
   const result = evaluateRules(rules, context);
 

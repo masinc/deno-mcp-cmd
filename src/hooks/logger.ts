@@ -4,7 +4,7 @@ import { join } from "@std/path";
 
 /**
  * Configure logging for hook system
- * 
+ *
  * Sets up file logging in user's cache directory and stderr output for warnings.
  * The log file is stored at ~/.cache/@masinc/mcp-cmd/hook.log
  */

@@ -1,6 +1,6 @@
 /**
  * Command execution worker for running shell commands in isolated threads
- * 
+ *
  * This worker handles:
  * - Command execution with stdout/stderr streaming
  * - Binary data detection and base64 encoding
@@ -45,7 +45,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
 
 /**
  * Executes a shell command with streaming output
- * 
+ *
  * @param message - Worker message containing command details
  */
 async function executeCommand(message: WorkerMessage) {
@@ -128,10 +128,10 @@ async function executeCommand(message: WorkerMessage) {
 
 /**
  * Processes a readable stream and sends data chunks to main thread
- * 
+ *
  * Handles both text and binary data, automatically detecting and
  * base64-encoding binary content.
- * 
+ *
  * @param stream - The readable stream to process
  * @param streamType - Type of stream (stdout or stderr)
  * @param id - Output ID for tracking
@@ -200,11 +200,11 @@ function cancelCommand(id: OutputId) {
 
 /**
  * Detects if data contains binary content
- * 
+ *
  * Uses heuristics to determine if the data is binary:
  * 1. Presence of NULL bytes
  * 2. High percentage of control characters
- * 
+ *
  * @param data - Byte array to analyze
  * @returns true if data appears to be binary
  */
@@ -230,7 +230,7 @@ function isBinaryData(data: Uint8Array): boolean {
 
 /**
  * Global error handlers for the worker
- * 
+ *
  * These handlers catch and log any unhandled errors or promise rejections
  * that occur during worker execution.
  */

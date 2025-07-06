@@ -1,4 +1,4 @@
-import type { Rule, RuleAction } from "./types.ts";
+import type { Rule, RuleAction, RuleContext } from "./types.ts";
 import { isAllPathsWithinCurrentDirectory } from "./path-utils.ts";
 import {
   createTemplateData,
@@ -31,7 +31,7 @@ export function createCommandRule(
 
   return {
     name,
-    condition: (ctx) => {
+    condition: (ctx: RuleContext) => {
       if (commandList.includes(ctx.toolInput.command)) {
         const defaultReason = `${ctx.toolInput.command} command ${actionVerb}`;
         const finalReason = reason
@@ -106,13 +106,13 @@ export function blockCommandWithFlags(
 ): Rule {
   return {
     name: `block-${command}-with-flags`,
-    condition: (ctx) => {
+    condition: (ctx: RuleContext) => {
       if (ctx.toolInput.command === command) {
-        const hasDangerous = ctx.toolInput.args?.some((arg) =>
+        const hasDangerous = ctx.toolInput.args?.some((arg: string) =>
           dangerousFlags.includes(arg)
         );
         if (hasDangerous) {
-          const foundFlags = ctx.toolInput.args?.filter((arg) =>
+          const foundFlags = ctx.toolInput.args?.filter((arg: string) =>
             dangerousFlags.includes(arg)
           );
           const defaultReason = `${command} with dangerous flags: ${
@@ -146,7 +146,7 @@ export function blockCommandWithFlags(
 export function blockOutsideCurrentDirectory(reason?: string): Rule {
   return {
     name: "block-outside-current-directory",
-    condition: (ctx) => {
+    condition: (ctx: RuleContext) => {
       const args = ctx.toolInput.args || [];
       if (args.length === 0) return null;
 
@@ -188,7 +188,7 @@ export function createRule(
 ): Rule {
   return {
     name,
-    condition: (ctx) => {
+    condition: (ctx: RuleContext) => {
       if (condition(ctx)) {
         const defaultReason = `${name} rule triggered`;
         const finalReason = reason
@@ -226,7 +226,7 @@ export function createWarningRule(
 ): Rule {
   return {
     name,
-    condition: (ctx) => {
+    condition: (ctx: RuleContext) => {
       if (condition(ctx)) {
         // If warning is acknowledged, perform the configured action
         if (ctx.toolInput.acknowledgeWarnings?.includes(name)) {
@@ -237,7 +237,13 @@ export function createWarningRule(
                 action: acknowledgedAction,
               }),
             )
-            : `${name} warning acknowledged - command ${acknowledgedAction === "skip" ? "allowed but may not work as expected" : acknowledgedAction === "approve" ? "approved" : "requires confirmation"}`;
+            : `${name} warning acknowledged - command ${
+              acknowledgedAction === "skip"
+                ? "allowed but may not work as expected"
+                : acknowledgedAction === "approve"
+                ? "approved"
+                : "requires confirmation"
+            }`;
 
           return {
             action: acknowledgedAction,
@@ -382,7 +388,7 @@ function matchesPattern(
 export function createPatternBasedRule(pattern: CommandPattern): Rule {
   return {
     name: pattern.name,
-    condition: (ctx) => {
+    condition: (ctx: RuleContext) => {
       if (
         matchesPattern(ctx.toolInput.command, ctx.toolInput.args || [], pattern)
       ) {

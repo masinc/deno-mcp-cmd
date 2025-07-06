@@ -1,15 +1,15 @@
 import { assertEquals } from "@std/assert";
 import {
-  UserRulesConfigSchema,
-  BlockCommandRuleSchema,
   ApproveCommandRuleSchema,
-  ConfirmCommandRuleSchema,
-  WarningRuleSchema,
-  ConditionalRuleSchema,
-  LocationRuleSchema,
-  CommandPatternSchema,
   ArgsPatternSchema,
+  BlockCommandRuleSchema,
+  CommandPatternSchema,
+  ConditionalRuleSchema,
+  ConfirmCommandRuleSchema,
+  LocationRuleSchema,
   PathPatternSchema,
+  UserRulesConfigSchema,
+  WarningRuleSchema,
 } from "./schema.ts";
 
 Deno.test("CommandPatternSchema validation", async (t) => {
@@ -27,7 +27,9 @@ Deno.test("CommandPatternSchema validation", async (t) => {
   });
 
   await t.step("accepts oneOf pattern", () => {
-    const result = CommandPatternSchema.safeParse({ oneOf: ["docker", "podman"] });
+    const result = CommandPatternSchema.safeParse({
+      oneOf: ["docker", "podman"],
+    });
     assertEquals(result.success, true);
   });
 
@@ -47,9 +49,9 @@ Deno.test("CommandPatternSchema validation", async (t) => {
   });
 
   await t.step("rejects multiple pattern types", () => {
-    const result = CommandPatternSchema.safeParse({ 
-      exact: "docker", 
-      regex: "^docker.*" 
+    const result = CommandPatternSchema.safeParse({
+      exact: "docker",
+      regex: "^docker.*",
     });
     assertEquals(result.success, false);
   });
@@ -62,17 +64,23 @@ Deno.test("CommandPatternSchema validation", async (t) => {
 
 Deno.test("ArgsPatternSchema validation", async (t) => {
   await t.step("accepts containsAny pattern", () => {
-    const result = ArgsPatternSchema.safeParse({ containsAny: ["--privileged"] });
+    const result = ArgsPatternSchema.safeParse({
+      containsAny: ["--privileged"],
+    });
     assertEquals(result.success, true);
   });
 
   await t.step("accepts containsAll pattern", () => {
-    const result = ArgsPatternSchema.safeParse({ containsAll: ["--force", "--recursive"] });
+    const result = ArgsPatternSchema.safeParse({
+      containsAll: ["--force", "--recursive"],
+    });
     assertEquals(result.success, true);
   });
 
   await t.step("accepts containsNone pattern", () => {
-    const result = ArgsPatternSchema.safeParse({ containsNone: ["-d", "--delete"] });
+    const result = ArgsPatternSchema.safeParse({
+      containsNone: ["-d", "--delete"],
+    });
     assertEquals(result.success, true);
   });
 
@@ -87,7 +95,9 @@ Deno.test("ArgsPatternSchema validation", async (t) => {
   });
 
   await t.step("accepts regexAll pattern", () => {
-    const result = ArgsPatternSchema.safeParse({ regexAll: ["--user=.*", "--group=.*"] });
+    const result = ArgsPatternSchema.safeParse({
+      regexAll: ["--user=.*", "--group=.*"],
+    });
     assertEquals(result.success, true);
   });
 
@@ -97,17 +107,17 @@ Deno.test("ArgsPatternSchema validation", async (t) => {
   });
 
   await t.step("accepts length constraints", () => {
-    const result = ArgsPatternSchema.safeParse({ 
-      minLength: 1, 
-      maxLength: 5 
+    const result = ArgsPatternSchema.safeParse({
+      minLength: 1,
+      maxLength: 5,
     });
     assertEquals(result.success, true);
   });
 
   await t.step("accepts combined patterns", () => {
-    const result = ArgsPatternSchema.safeParse({ 
+    const result = ArgsPatternSchema.safeParse({
       containsAny: ["--privileged"],
-      minLength: 2
+      minLength: 2,
     });
     assertEquals(result.success, true);
   });
@@ -140,9 +150,9 @@ Deno.test("PathPatternSchema validation", async (t) => {
   });
 
   await t.step("accepts combined patterns", () => {
-    const result = PathPatternSchema.safeParse({ 
+    const result = PathPatternSchema.safeParse({
       startsWith: "/usr",
-      contains: "bin"
+      contains: "bin",
     });
     assertEquals(result.success, true);
   });
@@ -161,8 +171,8 @@ Deno.test("BlockCommandRuleSchema validation", async (t) => {
       enabled: true,
       spec: {
         command: "sudo",
-        reason: "Sudo access not allowed"
-      }
+        reason: "Sudo access not allowed",
+      },
     };
     const result = BlockCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -173,8 +183,8 @@ Deno.test("BlockCommandRuleSchema validation", async (t) => {
       name: "block-sudo",
       kind: "BlockCommandRule",
       spec: {
-        command: "sudo"
-      }
+        command: "sudo",
+      },
     };
     const result = BlockCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -187,7 +197,7 @@ Deno.test("BlockCommandRuleSchema validation", async (t) => {
     const rule = {
       name: "invalid-rule",
       kind: "BlockCommandRule",
-      spec: {}
+      spec: {},
     };
     const result = BlockCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -198,8 +208,8 @@ Deno.test("BlockCommandRuleSchema validation", async (t) => {
       name: "block-force",
       kind: "BlockCommandRule",
       spec: {
-        args: { containsAny: ["--force"] }
-      }
+        args: { containsAny: ["--force"] },
+      },
     };
     const result = BlockCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -210,8 +220,8 @@ Deno.test("BlockCommandRuleSchema validation", async (t) => {
       name: "block-system",
       kind: "BlockCommandRule",
       spec: {
-        cwd: { startsWith: "/usr" }
-      }
+        cwd: { startsWith: "/usr" },
+      },
     };
     const result = BlockCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -226,8 +236,8 @@ Deno.test("ApproveCommandRuleSchema validation", async (t) => {
       enabled: true,
       spec: {
         command: "ls",
-        reason: "Safe directory listing command"
-      }
+        reason: "Safe directory listing command",
+      },
     };
     const result = ApproveCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -239,8 +249,8 @@ Deno.test("ApproveCommandRuleSchema validation", async (t) => {
       kind: "ApproveCommandRule",
       spec: {
         command: { oneOf: ["ls", "pwd", "whoami"] },
-        reason: "Safe read-only commands"
-      }
+        reason: "Safe read-only commands",
+      },
     };
     const result = ApproveCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -252,8 +262,8 @@ Deno.test("ApproveCommandRuleSchema validation", async (t) => {
       kind: "ApproveCommandRule",
       spec: {
         command: { oneOf: ["npm", "yarn"] },
-        cwd: { contains: "projects" }
-      }
+        cwd: { contains: "projects" },
+      },
     };
     const result = ApproveCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -264,8 +274,8 @@ Deno.test("ApproveCommandRuleSchema validation", async (t) => {
       name: "invalid-approve",
       kind: "ApproveCommandRule",
       spec: {
-        reason: "No patterns specified"
-      }
+        reason: "No patterns specified",
+      },
     };
     const result = ApproveCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -276,8 +286,8 @@ Deno.test("ApproveCommandRuleSchema validation", async (t) => {
       name: "approve-ls",
       kind: "ApproveCommandRule",
       spec: {
-        command: "ls"
-      }
+        command: "ls",
+      },
     };
     const result = ApproveCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -296,8 +306,8 @@ Deno.test("ConfirmCommandRuleSchema validation", async (t) => {
       spec: {
         args: { containsAny: ["prod", "production"] },
         reason: "Production deployment requires confirmation",
-        message: "Deploy to production environment?"
-      }
+        message: "Deploy to production environment?",
+      },
     };
     const result = ConfirmCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -310,8 +320,8 @@ Deno.test("ConfirmCommandRuleSchema validation", async (t) => {
       spec: {
         command: "kubectl",
         args: { startsWith: ["apply"] },
-        reason: "Kubernetes changes require confirmation"
-      }
+        reason: "Kubernetes changes require confirmation",
+      },
     };
     const result = ConfirmCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -324,8 +334,8 @@ Deno.test("ConfirmCommandRuleSchema validation", async (t) => {
       spec: {
         cwd: { startsWith: "/etc" },
         reason: "System configuration changes need approval",
-        message: "Modify system configuration files?"
-      }
+        message: "Modify system configuration files?",
+      },
     };
     const result = ConfirmCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -338,8 +348,8 @@ Deno.test("ConfirmCommandRuleSchema validation", async (t) => {
       spec: {
         args: { containsAll: ["--force", "--yes"] },
         reason: "Multiple force flags detected",
-        message: "Execute potentially dangerous operation?"
-      }
+        message: "Execute potentially dangerous operation?",
+      },
     };
     const result = ConfirmCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -350,8 +360,8 @@ Deno.test("ConfirmCommandRuleSchema validation", async (t) => {
       name: "invalid-confirm",
       kind: "ConfirmCommandRule",
       spec: {
-        reason: "No patterns specified"
-      }
+        reason: "No patterns specified",
+      },
     };
     const result = ConfirmCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -362,8 +372,8 @@ Deno.test("ConfirmCommandRuleSchema validation", async (t) => {
       name: "confirm-kubectl",
       kind: "ConfirmCommandRule",
       spec: {
-        command: "kubectl"
-      }
+        command: "kubectl",
+      },
     };
     const result = ConfirmCommandRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -382,11 +392,11 @@ Deno.test("WarningRuleSchema validation", async (t) => {
       spec: {
         patterns: {
           command: "docker",
-          args: { containsAny: ["--privileged"] }
+          args: { containsAny: ["--privileged"] },
         },
         warningReason: "Privileged container detected",
-        acknowledgedReason: "Acknowledged"
-      }
+        acknowledgedReason: "Acknowledged",
+      },
     };
     const result = WarningRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -398,9 +408,9 @@ Deno.test("WarningRuleSchema validation", async (t) => {
       kind: "WarningRule",
       spec: {
         patterns: {
-          command: "docker"
-        }
-      }
+          command: "docker",
+        },
+      },
     };
     const result = WarningRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -412,8 +422,8 @@ Deno.test("WarningRuleSchema validation", async (t) => {
       kind: "WarningRule",
       spec: {
         patterns: {},
-        warningReason: "Warning"
-      }
+        warningReason: "Warning",
+      },
     };
     const result = WarningRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -425,10 +435,10 @@ Deno.test("WarningRuleSchema validation", async (t) => {
       kind: "WarningRule",
       spec: {
         patterns: {
-          command: "docker"
+          command: "docker",
         },
-        warningReason: ""
-      }
+        warningReason: "",
+      },
     };
     const result = WarningRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -444,8 +454,8 @@ Deno.test("ConditionalRuleSchema validation", async (t) => {
       spec: {
         condition: "command === 'kubectl' && args.includes('prod')",
         action: "confirm",
-        reason: "Production deployment"
-      }
+        reason: "Production deployment",
+      },
     };
     const result = ConditionalRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -459,8 +469,8 @@ Deno.test("ConditionalRuleSchema validation", async (t) => {
         kind: "ConditionalRule",
         spec: {
           condition: "true",
-          action
-        }
+          action,
+        },
       };
       const result = ConditionalRuleSchema.safeParse(rule);
       assertEquals(result.success, true, `Action ${action} should be valid`);
@@ -472,8 +482,8 @@ Deno.test("ConditionalRuleSchema validation", async (t) => {
       name: "invalid-rule",
       kind: "ConditionalRule",
       spec: {
-        action: "block"
-      }
+        action: "block",
+      },
     };
     const result = ConditionalRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -485,8 +495,8 @@ Deno.test("ConditionalRuleSchema validation", async (t) => {
       kind: "ConditionalRule",
       spec: {
         condition: "true",
-        action: "invalid"
-      }
+        action: "invalid",
+      },
     };
     const result = ConditionalRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -501,12 +511,12 @@ Deno.test("LocationRuleSchema validation", async (t) => {
       enabled: true,
       spec: {
         paths: {
-          outside: "/usr"
+          outside: "/usr",
         },
         commands: ["rm", "mv"],
         action: "block",
-        reason: "System protection"
-      }
+        reason: "System protection",
+      },
     };
     const result = LocationRuleSchema.safeParse(rule);
     assertEquals(result.success, true);
@@ -520,8 +530,8 @@ Deno.test("LocationRuleSchema validation", async (t) => {
         kind: "LocationRule",
         spec: {
           paths: { startsWith: "/home" },
-          action
-        }
+          action,
+        },
       };
       const result = LocationRuleSchema.safeParse(rule);
       assertEquals(result.success, true, `Action ${action} should be valid`);
@@ -534,8 +544,8 @@ Deno.test("LocationRuleSchema validation", async (t) => {
       kind: "LocationRule",
       spec: {
         paths: {},
-        action: "block"
-      }
+        action: "block",
+      },
     };
     const result = LocationRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -547,8 +557,8 @@ Deno.test("LocationRuleSchema validation", async (t) => {
       kind: "LocationRule",
       spec: {
         paths: { startsWith: "/home" },
-        action: "invalid"
-      }
+        action: "invalid",
+      },
     };
     const result = LocationRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
@@ -563,8 +573,8 @@ Deno.test("UserRulesConfigSchema validation", async (t) => {
           name: "block-sudo",
           kind: "BlockCommandRule",
           spec: {
-            command: "sudo"
-          }
+            command: "sudo",
+          },
         },
         {
           name: "confirm-kubectl-apply",
@@ -572,20 +582,20 @@ Deno.test("UserRulesConfigSchema validation", async (t) => {
           spec: {
             command: "kubectl",
             args: { startsWith: ["apply"] },
-            reason: "Kubernetes changes require confirmation"
-          }
+            reason: "Kubernetes changes require confirmation",
+          },
         },
         {
           name: "warn-docker",
           kind: "WarningRule",
           spec: {
             patterns: {
-              command: "docker"
+              command: "docker",
             },
-            warningReason: "Docker detected"
-          }
-        }
-      ]
+            warningReason: "Docker detected",
+          },
+        },
+      ],
     };
     const result = UserRulesConfigSchema.safeParse(config);
     assertEquals(result.success, true);
@@ -603,9 +613,9 @@ Deno.test("UserRulesConfigSchema validation", async (t) => {
         {
           name: "invalid-rule",
           kind: "InvalidKind",
-          spec: {}
-        }
-      ]
+          spec: {},
+        },
+      ],
     };
     const result = UserRulesConfigSchema.safeParse(config);
     assertEquals(result.success, false);

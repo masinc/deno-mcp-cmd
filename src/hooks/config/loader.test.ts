@@ -1,5 +1,9 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import { loadUserRulesConfig, loadAndMergeUserRules, configFileExists } from "./loader.ts";
+import {
+  configFileExists,
+  loadAndMergeUserRules,
+  loadUserRulesConfig,
+} from "./loader.ts";
 
 // Test data directory
 const TEST_DATA_DIR = "/tmp/mcp-cmd-test-config";
@@ -70,7 +74,9 @@ rules:
 
     await writeTestFile("default-enabled.yaml", yamlContent);
 
-    const config = await loadUserRulesConfig(`${TEST_DATA_DIR}/default-enabled.yaml`);
+    const config = await loadUserRulesConfig(
+      `${TEST_DATA_DIR}/default-enabled.yaml`,
+    );
     assertEquals(config.rules[0].enabled, true);
   });
 
@@ -88,7 +94,7 @@ rules:
     await assertRejects(
       () => loadUserRulesConfig(`${TEST_DATA_DIR}/invalid-syntax.yaml`),
       Error,
-      "Invalid YAML/JSON syntax"
+      "Invalid YAML/JSON syntax",
     );
   });
 
@@ -106,7 +112,7 @@ rules:
     await assertRejects(
       () => loadUserRulesConfig(`${TEST_DATA_DIR}/invalid-validation.yaml`),
       Error,
-      "Invalid configuration"
+      "Invalid configuration",
     );
   });
 
@@ -117,19 +123,23 @@ Deno.test("loadUserRulesConfig - JSON format", async (t) => {
   await setupTestDirectory();
 
   await t.step("loads valid JSON configuration", async () => {
-    const jsonContent = JSON.stringify({
-      rules: [
-        {
-          name: "block-sudo",
-          kind: "BlockCommandRule",
-          enabled: true,
-          spec: {
-            command: "sudo",
-            reason: "Sudo access not allowed"
-          }
-        }
-      ]
-    }, null, 2);
+    const jsonContent = JSON.stringify(
+      {
+        rules: [
+          {
+            name: "block-sudo",
+            kind: "BlockCommandRule",
+            enabled: true,
+            spec: {
+              command: "sudo",
+              reason: "Sudo access not allowed",
+            },
+          },
+        ],
+      },
+      null,
+      2,
+    );
 
     await writeTestFile("valid.json", jsonContent);
 
@@ -157,7 +167,7 @@ Deno.test("loadUserRulesConfig - JSON format", async (t) => {
     await assertRejects(
       () => loadUserRulesConfig(`${TEST_DATA_DIR}/invalid-syntax.json`),
       Error,
-      "Invalid YAML/JSON syntax"
+      "Invalid YAML/JSON syntax",
     );
   });
 
@@ -171,26 +181,26 @@ Deno.test("loadUserRulesConfig - File operations", async (t) => {
     await assertRejects(
       () => loadUserRulesConfig(`${TEST_DATA_DIR}/non-existent.yaml`),
       Error,
-      "Configuration file not found"
+      "Configuration file not found",
     );
   });
 
   await t.step("detects file format by extension", async () => {
     const config = { rules: [] };
-    
+
     // Test YAML extensions
     await writeTestFile("test.yaml", "rules: []");
     await writeTestFile("test.yml", "rules: []");
-    
+
     const yamlConfig1 = await loadUserRulesConfig(`${TEST_DATA_DIR}/test.yaml`);
     const yamlConfig2 = await loadUserRulesConfig(`${TEST_DATA_DIR}/test.yml`);
-    
+
     assertEquals(yamlConfig1, config);
     assertEquals(yamlConfig2, config);
-    
+
     // Test JSON extension
     await writeTestFile("test.json", JSON.stringify(config));
-    
+
     const jsonConfig = await loadUserRulesConfig(`${TEST_DATA_DIR}/test.json`);
     assertEquals(jsonConfig, config);
   });
@@ -225,7 +235,7 @@ rules:
 
     const mergedConfig = await loadAndMergeUserRules([
       `${TEST_DATA_DIR}/config1.yaml`,
-      `${TEST_DATA_DIR}/config2.yaml`
+      `${TEST_DATA_DIR}/config2.yaml`,
     ]);
 
     assertEquals(mergedConfig.rules.length, 2);
@@ -246,7 +256,7 @@ rules:
 
     const mergedConfig = await loadAndMergeUserRules([
       `${TEST_DATA_DIR}/existing.yaml`,
-      `${TEST_DATA_DIR}/missing.yaml`
+      `${TEST_DATA_DIR}/missing.yaml`,
     ]);
 
     assertEquals(mergedConfig.rules.length, 1);
@@ -256,7 +266,7 @@ rules:
   await t.step("returns empty config when no files found", async () => {
     const mergedConfig = await loadAndMergeUserRules([
       `${TEST_DATA_DIR}/missing1.yaml`,
-      `${TEST_DATA_DIR}/missing2.yaml`
+      `${TEST_DATA_DIR}/missing2.yaml`,
     ]);
 
     assertEquals(mergedConfig.rules, []);
@@ -275,7 +285,7 @@ rules:
     await assertRejects(
       () => loadAndMergeUserRules([`${TEST_DATA_DIR}/invalid.yaml`]),
       Error,
-      "Invalid configuration"
+      "Invalid configuration",
     );
   });
 
@@ -287,19 +297,21 @@ Deno.test("configFileExists", async (t) => {
 
   await t.step("returns true for existing file", async () => {
     await writeTestFile("exists.yaml", "rules: []");
-    
+
     const exists = await configFileExists(`${TEST_DATA_DIR}/exists.yaml`);
     assertEquals(exists, true);
   });
 
   await t.step("returns false for non-existent file", async () => {
-    const exists = await configFileExists(`${TEST_DATA_DIR}/does-not-exist.yaml`);
+    const exists = await configFileExists(
+      `${TEST_DATA_DIR}/does-not-exist.yaml`,
+    );
     assertEquals(exists, false);
   });
 
   await t.step("returns false for directory", async () => {
     await Deno.mkdir(`${TEST_DATA_DIR}/directory`);
-    
+
     const exists = await configFileExists(`${TEST_DATA_DIR}/directory`);
     assertEquals(exists, false);
   });
@@ -312,7 +324,7 @@ Deno.test("Path expansion", async (t) => {
     // This test verifies that the tilde expansion works
     // We don't test actual file access since HOME may not exist in test env
     const homeConfigPath = "~/.config/@masinc/mcp-cmd/hooks-rules.yaml";
-    
+
     // configFileExists should handle tilde expansion gracefully (return false if no file)
     const exists = await configFileExists(homeConfigPath);
     assertEquals(typeof exists, "boolean"); // Should not throw error
@@ -382,22 +394,34 @@ rules:
 
     const config = await loadUserRulesConfig(`${TEST_DATA_DIR}/complex.yaml`);
     assertEquals(config.rules.length, 4);
-    
+
     // Verify all rule types are parsed correctly
     assertEquals(config.rules[0].kind, "BlockCommandRule");
     assertEquals(config.rules[1].kind, "WarningRule");
     assertEquals(config.rules[2].kind, "ConditionalRule");
     assertEquals(config.rules[3].kind, "LocationRule");
-    
+
     // Verify complex patterns are preserved
-    const blockRule = config.rules[0] as { spec: { command: { oneOf: string[] }; args: { minLength: number; maxLength: number } } };
+    const blockRule = config.rules[0] as {
+      spec: {
+        command: { oneOf: string[] };
+        args: { minLength: number; maxLength: number };
+      };
+    };
     assertEquals(blockRule.spec.command.oneOf, ["rm", "mv", "chmod"]);
     assertEquals(blockRule.spec.args.minLength, 2);
     assertEquals(blockRule.spec.args.maxLength, 10);
-    
-    const warningRule = config.rules[1] as { spec: { patterns: { command: { regex: string }; args: { exact: string[] } } } };
+
+    const warningRule = config.rules[1] as {
+      spec: {
+        patterns: { command: { regex: string }; args: { exact: string[] } };
+      };
+    };
     assertEquals(warningRule.spec.patterns.command.regex, "^(curl|wget|nc)$");
-    assertEquals(warningRule.spec.patterns.args.exact, ["--insecure", "example.com"]);
+    assertEquals(warningRule.spec.patterns.args.exact, [
+      "--insecure",
+      "example.com",
+    ]);
   });
 
   await cleanupTestDirectory();

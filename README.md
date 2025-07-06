@@ -162,11 +162,13 @@ This project includes hook scripts for use with Claude Code:
 
 - **hooks-bash.ts**: Blocks Bash tool usage and redirects to MCP cmd tool
 - **hooks-cmd.ts**: Controls MCP cmd tool usage with command filtering
-- **hooks-init.ts**: Initialize hook configuration files with presets and generate JSON Schema
+- **hooks-init.ts**: Initialize hook configuration files with presets and
+  generate JSON Schema
 
 ### Initializing Hook Configuration
 
-Use `hooks-init.ts` to create hook configuration files with predefined security rules:
+Use `hooks-init.ts` to create hook configuration files with predefined security
+rules:
 
 ```bash
 # Create project-local configuration with default security preset
@@ -187,18 +189,23 @@ deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --help
 
 #### Available Presets
 
-- **default**: Comprehensive security rules (blocks dangerous commands, warns about shell expansion, etc.)
-- **development**: Development-friendly rules (git warnings, database confirmations)
+- **default**: Comprehensive security rules (blocks dangerous commands, warns
+  about shell expansion, etc.)
+- **development**: Development-friendly rules (git warnings, database
+  confirmations)
 - **example**: Example configuration showing all rule types
 - **empty**: Empty configuration (no rules)
 
 #### Configuration Locations
 
 - **Project-local**: `./.mcp-cmd/hooks-rules.yaml` (use `--output project`)
-- **User-global**: `~/.config/@masinc/mcp-cmd/hooks-rules.yaml` (use `--output user`)
-- **Stdout**: Output to console for piping or manual review (use `--output stdout` or omit for default)
+- **User-global**: `~/.config/@masinc/mcp-cmd/hooks-rules.yaml` (use
+  `--output user`)
+- **Stdout**: Output to console for piping or manual review (use
+  `--output stdout` or omit for default)
 
 The hook system automatically searches for configuration files in this order:
+
 1. `~/.config/@masinc/mcp-cmd/hooks-rules.yaml`
 2. `~/.config/@masinc/mcp-cmd/hooks-rules.yml`
 3. `~/.config/@masinc/mcp-cmd/hooks-rules.json`

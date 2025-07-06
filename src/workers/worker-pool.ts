@@ -14,7 +14,7 @@ import type {
 
 /**
  * Worker pool for managing concurrent command execution
- * 
+ *
  * Manages a pool of worker threads to execute shell commands concurrently.
  * Handles task queuing, worker lifecycle, and result tracking.
  */
@@ -40,7 +40,7 @@ export class CommandWorkerPool {
 
   /**
    * Executes a command using the worker pool
-   * 
+   *
    * @param id - Unique output ID for tracking
    * @param command - Command to execute
    * @param args - Optional command arguments

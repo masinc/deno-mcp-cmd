@@ -94,7 +94,7 @@ Deno.test("evaluateRules", async (t) => {
     const rules: Rule[] = [
       {
         name: "block_rm",
-        condition: (ctx) =>
+        condition: (ctx: RuleContext) =>
           ctx.toolInput.command === "rm"
             ? { action: "block", reason: "rm not allowed" }
             : null,

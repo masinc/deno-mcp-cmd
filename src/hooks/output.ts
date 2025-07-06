@@ -7,13 +7,13 @@ import {
 
 /**
  * Writes the output to stdout as JSON and exits the process
- * 
+ *
  * This function handles two types of output formats:
  * 1. SimpleOutput: Contains a message and optional exit code
  * 2. PreToolUseOutput: Contains hook decision data for tool execution
- * 
+ *
  * The function validates the output format and exits with appropriate status codes.
- * 
+ *
  * @param output - The output data to write (either SimpleOutput or PreToolUseOutput)
  * @throws Never returns - always exits the process
  */

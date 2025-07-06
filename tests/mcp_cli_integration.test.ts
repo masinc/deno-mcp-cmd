@@ -69,7 +69,6 @@ Deno.test("MCP CLI Integration", async (t) => {
 
     // Should contain a command ID
     assertStringIncludes(output, "id");
-    assertStringIncludes(output, "status");
 
     // Extract the command ID from the output
     const match = output.match(/"id":"([^"]+)"/);

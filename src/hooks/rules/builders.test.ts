@@ -524,7 +524,6 @@ Deno.test("Extended Rule builders", async (t) => {
 });
 
 Deno.test("Warning rule system", async (t) => {
-
   await t.step(
     "shell expansion warning should detect partial matches in commands",
     () => {

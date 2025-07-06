@@ -13,9 +13,7 @@ interface ConfigOptions {
   force?: boolean;
 }
 
-interface JsonSchemaOptions {
-  // No options needed - always output to stdout
-}
+// No options interface needed - function always outputs to stdout
 
 function expandPath(path: string): string {
   if (path.startsWith("~/")) {
@@ -139,7 +137,7 @@ const configCommand = new Command()
     }
   });
 
-async function generateJsonSchema(_options: JsonSchemaOptions): Promise<void> {
+function generateJsonSchema(): void {
   // Generate JSON Schema from Zod schema
   const jsonSchema = z.toJSONSchema(UserRulesConfigSchema, {
     target: "draft-7",
@@ -152,8 +150,8 @@ async function generateJsonSchema(_options: JsonSchemaOptions): Promise<void> {
 const jsonschemaCommand = new Command()
   .name("jsonschema")
   .description("Generate JSON Schema for hooks configuration validation")
-  .action(async () => {
-    await generateJsonSchema({});
+  .action(() => {
+    generateJsonSchema();
   });
 
 const mainCommand = new Command()

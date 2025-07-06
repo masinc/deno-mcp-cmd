@@ -33,7 +33,8 @@ export const EXAMPLE_PRESET_CONFIG: UserRulesConfig = {
             containsAny: ["--privileged"],
           },
         },
-        warningReason: "Privileged Docker containers detected - verify security implications",
+        warningReason:
+          "Privileged Docker containers detected - verify security implications",
         acknowledgedAction: "skip",
         acknowledgedReason: "Privileged container usage acknowledged",
       },
@@ -43,7 +44,8 @@ export const EXAMPLE_PRESET_CONFIG: UserRulesConfig = {
       kind: "ConditionalRule",
       enabled: true,
       spec: {
-        condition: "(command === 'kubectl' || command === 'helm') && args.some(arg => arg.includes('prod'))",
+        condition:
+          "(command === 'kubectl' || command === 'helm') && args.some(arg => arg.includes('prod'))",
         action: "confirm",
         reason: "Production deployment requires explicit confirmation",
       },
@@ -77,7 +79,20 @@ export const DEFAULT_PRESET_CONFIG: UserRulesConfig = {
       spec: {
         command: "git",
         args: {
-          startsWith: ["status", "log", "show", "diff", "help", "version", "describe", "shortlog", "blame", "grep", "ls-files", "rev-parse"]
+          startsWith: [
+            "status",
+            "log",
+            "show",
+            "diff",
+            "help",
+            "version",
+            "describe",
+            "shortlog",
+            "blame",
+            "grep",
+            "ls-files",
+            "rev-parse",
+          ],
         },
         reason: "Safe git commands approved for read-only operations",
       },
@@ -135,7 +150,7 @@ export const DEFAULT_PRESET_CONFIG: UserRulesConfig = {
       enabled: true,
       spec: {
         paths: {
-          outside: "."
+          outside: ".",
         },
         action: "block",
         reason: "Operations outside current directory not allowed",
@@ -149,12 +164,14 @@ export const DEFAULT_PRESET_CONFIG: UserRulesConfig = {
       spec: {
         patterns: {
           command: {
-            regex: ".*[$`].*"
-          }
+            regex: ".*[$`].*",
+          },
         },
-        warningReason: "Shell expansion syntax detected in command. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.",
+        warningReason:
+          "Shell expansion syntax detected in command. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.",
         acknowledgedAction: "skip",
-        acknowledgedReason: "Shell expansion syntax in command acknowledged - proceeding with literal interpretation",
+        acknowledgedReason:
+          "Shell expansion syntax in command acknowledged - proceeding with literal interpretation",
       },
     },
     // Warn about shell expansion attempts in args
@@ -165,12 +182,14 @@ export const DEFAULT_PRESET_CONFIG: UserRulesConfig = {
       spec: {
         patterns: {
           args: {
-            regexAny: ".*[$`].*"
-          }
+            regexAny: ".*[$`].*",
+          },
         },
-        warningReason: "Shell expansion syntax detected in arguments. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.",
+        warningReason:
+          "Shell expansion syntax detected in arguments. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.",
         acknowledgedAction: "skip",
-        acknowledgedReason: "Shell expansion syntax in arguments acknowledged - proceeding with literal interpretation",
+        acknowledgedReason:
+          "Shell expansion syntax in arguments acknowledged - proceeding with literal interpretation",
       },
     },
   ],
@@ -202,7 +221,8 @@ export const DEVELOPMENT_PRESET_CONFIG: UserRulesConfig = {
       kind: "ConditionalRule",
       enabled: true,
       spec: {
-        condition: "command.includes('mysql') || command.includes('psql') || command.includes('mongo')",
+        condition:
+          "command.includes('mysql') || command.includes('psql') || command.includes('mongo')",
         action: "confirm",
         message: "Database operation detected",
         reason: "Database operations require confirmation in development",
@@ -214,7 +234,7 @@ export const DEVELOPMENT_PRESET_CONFIG: UserRulesConfig = {
       enabled: true,
       spec: {
         command: {
-          oneOf: ["ls", "pwd", "whoami", "date", "echo"]
+          oneOf: ["ls", "pwd", "whoami", "date", "echo"],
         },
         reason: "Safe read-only commands are automatically approved",
       },
@@ -225,10 +245,10 @@ export const DEVELOPMENT_PRESET_CONFIG: UserRulesConfig = {
       enabled: true,
       spec: {
         command: {
-          oneOf: ["npm", "yarn", "pnpm", "node", "deno"]
+          oneOf: ["npm", "yarn", "pnpm", "node", "deno"],
         },
         cwd: {
-          contains: "projects"
+          contains: "projects",
         },
         reason: "Development tools in projects directory are pre-approved",
       },
