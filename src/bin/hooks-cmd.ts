@@ -28,9 +28,17 @@ async function readStdin(): Promise<string> {
 }
 
 function hookToolRun(input: PreToolUseInput): Promise<never> {
-  const toolInputResult = ToolInputRunSchema.safeParse(input.tool_input);
+  // Normalize args if it's a string (convert to array)
+  const normalizedToolInput = { ...input.tool_input };
+  if (typeof normalizedToolInput.args === 'string') {
+    // If args is a string, split it into array (handle quoted args properly)
+    normalizedToolInput.args = normalizedToolInput.args.split(' ').filter(arg => arg.length > 0);
+  }
+  
+  const toolInputResult = ToolInputRunSchema.safeParse(normalizedToolInput);
   if (!toolInputResult.success) {
     console.error("Invalid tool input:", toolInputResult.error);
+    console.error("Received data:", JSON.stringify(input.tool_input, null, 2));
     Deno.exit(1);
   }
 
@@ -45,36 +53,30 @@ function hookToolRun(input: PreToolUseInput): Promise<never> {
 
   const result = evaluateRules(SECURITY_RULES, context);
 
-  switch (result.action) {
-    case "block":
-      writeOutputAndExit({
-        decision: "block",
-        reason: result.reason,
-      });
-      break;
-    case "warning":
-      writeOutputAndExit({
-        decision: "block",
-        reason: result.reason,
-      });
-      break;
-    case "confirm":
-      writeOutputAndExit({
-        reason: result.reason,
-      });
-      break;
-    case "approve":
-      writeOutputAndExit({
-        decision: "approve",
-        reason: result.reason,
-      });
-      break;
-    case "skip":
-      writeOutputAndExit({});
-      break;
-    default:
-      console.error("Unknown action:", result.action);
-      Deno.exit(1);
+  if (result.action === "block") {
+    writeOutputAndExit({
+      decision: "block",
+      reason: result.reason,
+    });
+  } else if (result.action === "warning") {
+    writeOutputAndExit({
+      decision: "block",
+      reason: result.reason,
+    });
+  } else if (result.action === "confirm") {
+    writeOutputAndExit({
+      reason: result.reason,
+    });
+  } else if (result.action === "approve") {
+    writeOutputAndExit({
+      decision: "approve",
+      reason: result.reason,
+    });
+  } else if (result.action === "skip") {
+    writeOutputAndExit({});
+  } else {
+    console.error("Unknown action:", result.action);
+    Deno.exit(1);
   }
 }
 
