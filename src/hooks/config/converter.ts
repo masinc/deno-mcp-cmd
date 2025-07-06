@@ -1,5 +1,5 @@
 import { createRule, createWarningRule } from "../rules/builders.ts";
-import type { Rule, RuleContext } from "../rules/types.ts";
+import type { Rule, RuleContext } from "../rules/schema.ts";
 import {
   type ApproveCommandRule,
   type ArgsPattern,

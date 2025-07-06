@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { evaluateRules } from "./engine.ts";
-import type { Rule, RuleContext } from "./types.ts";
+import type { Rule, RuleContext } from "./schema.ts";
 
 const createContext = (command: string, args: string[] = []): RuleContext => ({
   toolInput: {

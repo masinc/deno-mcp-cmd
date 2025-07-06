@@ -8,8 +8,8 @@ import type {
   LocationRule,
   WarningRule,
 } from "./schema.ts";
-import type { RuleContext, RuleResult } from "../rules/types.ts";
-import { RuleResultSchema } from "../rules/types.ts";
+import type { RuleContext, RuleResult } from "../rules/schema.ts";
+import { RuleResultSchema } from "../rules/schema.ts";
 import { UserRuleSchema } from "./schema.ts";
 
 // Helper function to assert rule result action

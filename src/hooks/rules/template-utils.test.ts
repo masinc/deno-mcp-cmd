@@ -5,7 +5,7 @@ import {
   getActionVerb,
   renderReason,
 } from "./template-utils.ts";
-import type { RuleContext } from "./types.ts";
+import type { RuleContext } from "./schema.ts";
 
 const createContext = (
   command: string,

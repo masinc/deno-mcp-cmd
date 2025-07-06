@@ -1,4 +1,4 @@
-import * as z from "zod";
+import * as z from "zod/v4";
 
 export const RuleActionSchema = z.enum([
   "block",
@@ -30,12 +30,18 @@ export const RuleResultSchema = z.object({
 });
 export type RuleResult = z.infer<typeof RuleResultSchema>;
 
+// zod/v4では z.function() がZodSchemaではなくなったため、
+// z.custom()を使用して関数バリデーションを実装
 export const RuleSchema = z.object({
   name: z.string(),
-  condition: z.function()
-    .args(RuleContextSchema)
-    .returns(z.union([RuleResultSchema, z.null()])),
+  condition: z.custom<(ctx: RuleContext) => RuleResult | null>(
+    (val) => typeof val === "function",
+    {
+      message: "Expected a function",
+    },
+  ),
 });
+
 export type Rule = z.infer<typeof RuleSchema>;
 
 export const RuleTemplateDataSchema = z.object({

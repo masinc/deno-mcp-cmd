@@ -1,4 +1,4 @@
-import type { Rule, RuleContext, RuleResult } from "./types.ts";
+import type { Rule, RuleContext, RuleResult } from "./schema.ts";
 
 /**
  * Evaluates a list of rules against a given context and returns the highest priority result

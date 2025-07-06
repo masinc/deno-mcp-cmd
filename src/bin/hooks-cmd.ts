@@ -18,7 +18,7 @@ import {
   loadAndMergeUserRules,
 } from "../hooks/config/loader.ts";
 import { convertUserRulesConfigToRules } from "../hooks/config/converter.ts";
-import type { RuleContext } from "../hooks/rules/types.ts";
+import type { RuleContext } from "../hooks/rules/schema.ts";
 
 async function readStdin(): Promise<string> {
   const decoder = new TextDecoder();

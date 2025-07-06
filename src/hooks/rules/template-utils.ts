@@ -1,5 +1,5 @@
-import type { RuleAction, RuleContext, RuleTemplateData } from "./types.ts";
-import { RuleTemplateDataSchema } from "./types.ts";
+import type { RuleAction, RuleContext, RuleTemplateData } from "./schema.ts";
+import { RuleTemplateDataSchema } from "./schema.ts";
 import { Eta } from "eta";
 
 // Create eta instance for rendering templates
@@ -53,6 +53,10 @@ export function getActionVerb(action: RuleAction): string {
       return "approved";
     case "skip":
       return "skipped";
+    default: {
+      const _exhaustiveCheck: never = action;
+      throw new Error(`Unknown action: ${_exhaustiveCheck}`);
+    }
   }
 }
 

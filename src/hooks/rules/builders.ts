@@ -1,4 +1,4 @@
-import type { Rule, RuleAction, RuleContext } from "./types.ts";
+import type { Rule, RuleAction, RuleContext } from "./schema.ts";
 import { isAllPathsWithinCurrentDirectory } from "./path-utils.ts";
 import {
   createTemplateData,
@@ -183,7 +183,7 @@ export function blockOutsideCurrentDirectory(reason?: string): Rule {
 export function createRule(
   name: string,
   action: RuleAction,
-  condition: (ctx: import("./types.ts").RuleContext) => boolean,
+  condition: (ctx: import("./schema.ts").RuleContext) => boolean,
   reason?: string,
 ): Rule {
   return {
@@ -219,7 +219,7 @@ export function createRule(
  */
 export function createWarningRule(
   name: string,
-  condition: (ctx: import("./types.ts").RuleContext) => boolean,
+  condition: (ctx: import("./schema.ts").RuleContext) => boolean,
   warningReason: string,
   acknowledgedReason?: string,
   acknowledgedAction: "skip" | "confirm" | "approve" = "skip",
