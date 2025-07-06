@@ -1,7 +1,4 @@
-import type {
-  Rule,
-  RuleAction,
-} from "./types.ts";
+import type { Rule, RuleAction } from "./types.ts";
 import { isAllPathsWithinCurrentDirectory } from "./path-utils.ts";
 import {
   createTemplateData,
@@ -94,7 +91,6 @@ export function confirmCommands(commands: string[], reason?: string): Rule {
 export function approveCommands(commands: string[], reason?: string): Rule {
   return createCommandRule("approve", commands, reason);
 }
-
 
 /**
  * Creates a rule that blocks a command when used with dangerous flags
@@ -213,73 +209,47 @@ export function createRule(
 }
 
 /**
- * Creates a rule that warns about shell expansion syntax in commands
- * Returns 'skip' action when warning is acknowledged via acknowledgeWarnings
- * @param reason - Optional custom reason template for acknowledgment case
- * @returns A rule that detects and warns about shell expansion patterns
+ * Creates a warning rule that shows a warning first, then skips on acknowledgment
+ * @param name - The warning name (used in acknowledgeWarnings array)
+ * @param condition - Function that determines if the warning should trigger
+ * @param warningMessage - The warning message to display
+ * @param skipReason - Optional custom reason template for acknowledgment case
+ * @returns A rule that warns first, then skips when acknowledged
  */
-export function warnShellExpansion(reason?: string): Rule {
+export function createWarningRule(
+  name: string,
+  condition: (ctx: import("./types.ts").RuleContext) => boolean,
+  warningMessage: string,
+  skipReason?: string,
+): Rule {
   return {
-    name: "warn-shell-expansion",
+    name,
     condition: (ctx) => {
-      // Check if command contains shell execution patterns
-      const shellPatterns = ["$(", "`"];
-      const hasShellCommand = shellPatterns.some((pattern) =>
-        ctx.toolInput.command.includes(pattern)
-      );
-
-      // Check if any args contain shell execution patterns
-      const hasShellArgs = ctx.toolInput.args?.some((arg) =>
-        shellPatterns.some((pattern) => arg.includes(pattern))
-      );
-
-      if (hasShellCommand || hasShellArgs) {
+      if (condition(ctx)) {
         // If warning is acknowledged, skip the command
-        if (
-          ctx.toolInput.acknowledgeWarnings?.includes("warn-shell-expansion")
-        ) {
-          const skipReason = reason
+        if (ctx.toolInput.acknowledgeWarnings?.includes(name)) {
+          const finalSkipReason = skipReason
             ? renderReason(
-              reason,
+              skipReason,
               createTemplateData(ctx, {
                 action: "skip",
               }),
             )
-            : "Shell expansion warning acknowledged - command allowed but may not work as expected";
+            : `${name} warning acknowledged - command allowed but may not work as expected`;
 
           return {
             action: "skip",
-            reason: skipReason,
+            reason: finalSkipReason,
           };
         }
 
-        // Otherwise, issue warning (always use default message)
-        const warningReason = createWarningReason(
-          "warn-shell-expansion",
-          `Shell expansion syntax detected in command '${ctx.toolInput.command}'. In this MCP environment, $(command) and \`command\` are treated as literal text, not executed. Use a plain string instead.`,
-        );
-
+        // Otherwise, issue warning
+        const warningReason = createWarningReason(name, warningMessage);
         return { action: "warning", reason: warningReason };
       }
       return null;
     },
   };
-}
-
-/**
- * @deprecated Use warnShellExpansion instead
- * Creates a rule that warns about shell expansion syntax (backward compatibility)
- */
-export function warnShellExecution(reason?: string): Rule {
-  return warnShellExpansion(reason);
-}
-
-/**
- * @deprecated Use warnShellExpansion instead
- * Creates a rule that warns about shell expansion syntax (backward compatibility)
- */
-export function blockShellExecution(reason?: string): Rule {
-  return warnShellExpansion(reason);
 }
 
 /**

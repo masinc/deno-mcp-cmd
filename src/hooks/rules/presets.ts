@@ -4,7 +4,7 @@ import {
   blockOutsideCurrentDirectory,
   createCommandRule,
   createPatternBasedRule,
-  warnShellExpansion,
+  createWarningRule,
 } from "./builders.ts";
 
 export const SECURITY_RULES: Rule[] = [
@@ -61,7 +61,16 @@ export const SECURITY_RULES: Rule[] = [
   ),
 
   // Warn about shell expansion attempts
-  warnShellExpansion(
+  createWarningRule(
+    "warn-shell-expansion",
+    (ctx) => {
+      const shellPatterns = ["$(", "`"];
+      const allInputs = [ctx.toolInput.command, ...(ctx.toolInput.args ?? [])];
+      return allInputs.some((input) =>
+        shellPatterns.some((pattern) => input.includes(pattern))
+      );
+    },
+    "Shell expansion syntax detected in command. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.",
     "Shell expansion syntax detected in command '<%= it.command %>'. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.\n\nTo proceed anyway, add acknowledgeWarnings: [\"warn-shell-expansion\"] to your request.",
   ),
 ];

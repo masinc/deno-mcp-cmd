@@ -6,23 +6,26 @@ import {
   blockCommands,
   blockCommandWithFlags,
   blockOutsideCurrentDirectory,
-  blockShellExecution,
   confirmCommand,
   confirmCommands,
   createCommandRule,
   createPatternBasedRule,
   createRule,
-  warnShellExpansion,
+  createWarningRule,
 } from "./builders.ts";
 import type { RuleContext } from "./types.ts";
 
 const createContext = (
   command: string,
   args?: string[],
-  cwd?: string,
-  acknowledgeWarnings?: string[],
+  options?: { cwd?: string; acknowledgeWarnings?: string[] },
 ): RuleContext => ({
-  toolInput: { command, args, cwd, acknowledgeWarnings },
+  toolInput: {
+    command,
+    args,
+    cwd: options?.cwd,
+    acknowledgeWarnings: options?.acknowledgeWarnings,
+  },
   sessionId: "test-session",
   transcriptPath: "/test/transcript",
   timestamp: new Date(),
@@ -154,18 +157,20 @@ Deno.test("Rule builders", async (t) => {
 
       // Should block absolute paths outside current directory
       const result1 = rule.condition(
-        createContext("ls", ["/etc/passwd"], "/home/user"),
+        createContext("ls", ["/etc/passwd"], { cwd: "/home/user" }),
       );
       assert(result1?.action === "block");
 
       // Should allow relative paths within current directory
       const result2 = rule.condition(
-        createContext("ls", ["./file.txt"], "/home/user"),
+        createContext("ls", ["./file.txt"], { cwd: "/home/user" }),
       );
       assert(result2 === null);
 
       // Should not check commands without args
-      const result3 = rule.condition(createContext("ls", [], "/home/user"));
+      const result3 = rule.condition(
+        createContext("ls", [], { cwd: "/home/user" }),
+      );
       assert(result3 === null);
     },
   );
@@ -327,25 +332,25 @@ Deno.test("Extended Rule builders", async (t) => {
 
     // Safe paths
     const result1 = rule.condition(
-      createContext("cp", ["file1.txt", "file2.txt"], testCwd),
+      createContext("cp", ["file1.txt", "file2.txt"], { cwd: testCwd }),
     );
     assert(result1 === null);
 
     // Dangerous paths
     const result2 = rule.condition(
-      createContext("cp", ["file.txt", "/tmp/out.txt"], testCwd),
+      createContext("cp", ["file.txt", "/tmp/out.txt"], { cwd: testCwd }),
     );
     assert(result2?.action === "block");
     assert(result2?.reason === "Security policy");
 
     // Mixed safe and dangerous
     const result3 = rule.condition(
-      createContext("cp", ["src/file.txt", "../backup/"], testCwd),
+      createContext("cp", ["src/file.txt", "../backup/"], { cwd: testCwd }),
     );
     assert(result3?.action === "block");
 
     // No args (should not trigger)
-    const result4 = rule.condition(createContext("pwd", [], testCwd));
+    const result4 = rule.condition(createContext("pwd", [], { cwd: testCwd }));
     assert(result4 === null);
   });
 
@@ -406,6 +411,39 @@ Deno.test("Extended Rule builders", async (t) => {
 
     // Custom rule
     assert(createRule("my-custom", "skip", () => true).name === "my-custom");
+
+    // Warning rule
+    assert(
+      createWarningRule("warn-test", () => true, "Test warning").name ===
+        "warn-test",
+    );
+  });
+
+  await t.step("createWarningRule behavior", () => {
+    const testWarning = createWarningRule(
+      "test-warning",
+      (ctx: RuleContext) => ctx.toolInput.command === "dangerous",
+      "This is dangerous",
+      "Custom skip reason",
+    );
+
+    // Should warn when condition is true and warning not acknowledged
+    const warnResult = testWarning.condition(createContext("dangerous"));
+    assert(warnResult?.action === "warning");
+    assert(
+      warnResult?.reason && warnResult.reason.includes("This is dangerous"),
+    );
+
+    // Should skip when warning is acknowledged
+    const skipResult = testWarning.condition(
+      createContext("dangerous", [], { acknowledgeWarnings: ["test-warning"] }),
+    );
+    assert(skipResult?.action === "skip");
+    assert(skipResult?.reason === "Custom skip reason");
+
+    // Should return null when condition is false
+    const noResult = testWarning.condition(createContext("safe"));
+    assert(noResult === null);
   });
 
   await t.step("Error handling and edge cases", () => {
@@ -485,68 +523,25 @@ Deno.test("Extended Rule builders", async (t) => {
   });
 });
 
-Deno.test("Shell expansion detection", async (t) => {
-  await t.step(
-    "warnShellExpansion should warn commands starting with $(",
-    () => {
-      const rule = warnShellExpansion();
+Deno.test("Warning rule system", async (t) => {
 
-      const result1 = rule.condition(createContext("$(echo hello)"));
-      assert(result1?.action === "warning");
-      assert(result1?.reason?.includes("Shell expansion syntax detected"));
-      assert(result1?.reason?.includes("treated as literal text"));
-      assert(
-        result1?.reason?.includes(
-          'add acknowledgeWarnings: ["warn-shell-expansion"]',
-        ),
+  await t.step(
+    "shell expansion warning should detect partial matches in commands",
+    () => {
+      const rule = createWarningRule(
+        "warn-shell-expansion",
+        (ctx) => {
+          const shellPatterns = ["$(", "`"];
+          const allInputs = [
+            ctx.toolInput.command,
+            ...(ctx.toolInput.args ?? []),
+          ];
+          return allInputs.some((input) =>
+            shellPatterns.some((pattern) => input.includes(pattern))
+          );
+        },
+        "Shell expansion syntax detected in command",
       );
-
-      const result2 = rule.condition(createContext("ls"));
-      assert(result2 === null);
-    },
-  );
-
-  await t.step(
-    "warnShellExpansion should warn commands starting with `",
-    () => {
-      const rule = warnShellExpansion();
-
-      const result1 = rule.condition(createContext("`echo hello`"));
-      assert(result1?.action === "warning");
-      assert(result1?.reason?.includes("Shell expansion syntax detected"));
-      assert(result1?.reason?.includes("treated as literal text"));
-
-      const result2 = rule.condition(createContext("cat"));
-      assert(result2 === null);
-    },
-  );
-
-  await t.step(
-    "warnShellExpansion should warn args containing shell patterns",
-    () => {
-      const rule = warnShellExpansion();
-
-      const result1 = rule.condition(
-        createContext("echo", ["$(whoami)", "test"]),
-      );
-      assert(result1?.action === "warning");
-      assert(result1?.reason?.includes("Shell expansion syntax detected"));
-      assert(result1?.reason?.includes("treated as literal text"));
-
-      const result2 = rule.condition(createContext("echo", ["`date`", "test"]));
-      assert(result2?.action === "warning");
-      assert(result2?.reason?.includes("Shell expansion syntax detected"));
-      assert(result2?.reason?.includes("treated as literal text"));
-
-      const result3 = rule.condition(createContext("echo", ["hello", "world"]));
-      assert(result3 === null);
-    },
-  );
-
-  await t.step(
-    "warnShellExpansion should detect partial matches in commands",
-    () => {
-      const rule = warnShellExpansion();
 
       // 部分一致のテスト
       const result1 = rule.condition(createContext("echo $(whoami)"));
@@ -563,28 +558,32 @@ Deno.test("Shell expansion detection", async (t) => {
   );
 
   await t.step(
-    "warnShellExpansion should skip when warn-shell-expansion is acknowledged",
+    "shell expansion warning should skip when acknowledged",
     () => {
-      const rule = warnShellExpansion();
+      const rule = createWarningRule(
+        "warn-shell-expansion",
+        (ctx) => {
+          const shellPatterns = ["$(", "`"];
+          const allInputs = [
+            ctx.toolInput.command,
+            ...(ctx.toolInput.args ?? []),
+          ];
+          return allInputs.some((input) =>
+            shellPatterns.some((pattern) => input.includes(pattern))
+          );
+        },
+        "Shell expansion syntax detected in command",
+      );
 
       const result = rule.condition(
-        createContext("$(ls)", [], undefined, ["warn-shell-expansion"]),
+        createContext("$(ls)", [], {
+          acknowledgeWarnings: ["warn-shell-expansion"],
+        }),
       );
       assert(result?.action === "skip");
       assert(result?.reason?.includes("warning acknowledged"));
     },
   );
-
-  await t.step("warnShellExpansion rule name", () => {
-    const rule = warnShellExpansion();
-    assert(rule.name === "warn-shell-expansion");
-  });
-
-  await t.step("blockShellExecution backward compatibility", () => {
-    const rule = blockShellExecution();
-    const result = rule.condition(createContext("$(ls)"));
-    assert(result?.action === "warning"); // Now returns warning instead of block
-  });
 });
 
 Deno.test("Pattern-based rule system", async (t) => {

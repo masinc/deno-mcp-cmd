@@ -29,23 +29,29 @@ Deno.test("Template utilities", async (t) => {
   });
 
   await t.step("createWarningReason should format warning messages", () => {
-    const result = createWarningReason("test-warning", "This is a test warning");
+    const result = createWarningReason(
+      "test-warning",
+      "This is a test warning",
+    );
     assert(result.includes("This is a test warning"));
     assert(result.includes('acknowledgeWarnings: ["test-warning"]'));
   });
 
-  await t.step("createTemplateData should create template data from context", () => {
-    const ctx = createContext("test", ["arg1", "arg2"], "/home/user");
-    const data = createTemplateData(ctx);
+  await t.step(
+    "createTemplateData should create template data from context",
+    () => {
+      const ctx = createContext("test", ["arg1", "arg2"], "/home/user");
+      const data = createTemplateData(ctx);
 
-    assert(data.command === "test");
-    assert(data.args?.length === 2);
-    assert(data.args?.[0] === "arg1");
-    assert(data.args?.[1] === "arg2");
-    assert(data.cwd === "/home/user");
-    assert(data.sessionId === "test-session");
-    assert(data.argCount === 2);
-  });
+      assert(data.command === "test");
+      assert(data.args?.length === 2);
+      assert(data.args?.[0] === "arg1");
+      assert(data.args?.[1] === "arg2");
+      assert(data.cwd === "/home/user");
+      assert(data.sessionId === "test-session");
+      assert(data.argCount === 2);
+    },
+  );
 
   await t.step("createTemplateData should auto-generate actionVerb", () => {
     const ctx = createContext("test");
@@ -55,19 +61,23 @@ Deno.test("Template utilities", async (t) => {
     assert(data.actionVerb === "blocked");
   });
 
-  await t.step("createTemplateData should not override provided actionVerb", () => {
-    const ctx = createContext("test");
-    const data = createTemplateData(ctx, { 
-      action: "block", 
-      actionVerb: "custom-verb" 
-    });
+  await t.step(
+    "createTemplateData should not override provided actionVerb",
+    () => {
+      const ctx = createContext("test");
+      const data = createTemplateData(ctx, {
+        action: "block",
+        actionVerb: "custom-verb",
+      });
 
-    assert(data.action === "block");
-    assert(data.actionVerb === "custom-verb");
-  });
+      assert(data.action === "block");
+      assert(data.actionVerb === "custom-verb");
+    },
+  );
 
   await t.step("renderReason should render eta templates", () => {
-    const template = "Command '<%= it.command %>' in session <%= it.sessionId %>";
+    const template =
+      "Command '<%= it.command %>' in session <%= it.sessionId %>";
     const ctx = createContext("test");
     const data = createTemplateData(ctx, { action: "block" });
 
@@ -76,7 +86,8 @@ Deno.test("Template utilities", async (t) => {
   });
 
   await t.step("renderReason should handle complex templates", () => {
-    const template = "Command: <%= it.command %>, Args: <%= (it.args || []).length %>, CWD: <%= it.cwd || 'unknown' %>";
+    const template =
+      "Command: <%= it.command %>, Args: <%= (it.args || []).length %>, CWD: <%= it.cwd || 'unknown' %>";
     const ctx = createContext("complex", ["arg1", "arg2"], "/workspace");
     const data = createTemplateData(ctx, { action: "confirm" });
 
@@ -94,34 +105,44 @@ Deno.test("Template utilities", async (t) => {
     assert(result === "Invalid template: <%= it.nonexistent.field.access %>");
   });
 
-  await t.step("renderReason should handle templates with additional data", () => {
-    const template = "Custom rule '<%= it.ruleName %>' approved command '<%= it.command %>'";
-    const ctx = createContext("safe-command");
-    const data = createTemplateData(ctx, { 
-      action: "approve",
-      ruleName: "test_rule"
-    });
+  await t.step(
+    "renderReason should handle templates with additional data",
+    () => {
+      const template =
+        "Custom rule '<%= it.ruleName %>' approved command '<%= it.command %>'";
+      const ctx = createContext("safe-command");
+      const data = createTemplateData(ctx, {
+        action: "approve",
+        ruleName: "test_rule",
+      });
 
-    const result = renderReason(template, data);
-    assert(result === "Custom rule 'test_rule' approved command 'safe-command'");
-  });
+      const result = renderReason(template, data);
+      assert(
+        result === "Custom rule 'test_rule' approved command 'safe-command'",
+      );
+    },
+  );
 });
 
 Deno.test("Template integration with rule builders", async (t) => {
   await t.step("shell expansion with custom template for skip", () => {
     const ctx = createContext("$(ls)", [], undefined, ["warn-shell-expansion"]);
     const data = createTemplateData(ctx, { action: "skip" });
-    const template = "Custom skip: <%= it.command %> acknowledged in session <%= it.sessionId %>";
-    
+    const template =
+      "Custom skip: <%= it.command %> acknowledged in session <%= it.sessionId %>";
+
     const result = renderReason(template, data);
-    assert(result === "Custom skip: $(ls) acknowledged in session test-session");
+    assert(
+      result === "Custom skip: $(ls) acknowledged in session test-session",
+    );
   });
 
   await t.step("pattern-based rule with eta template", () => {
     const ctx = createContext("git", ["status"]);
     const data = createTemplateData(ctx, { action: "approve" });
-    const template = "Git command '<%= it.args[0] %>' approved in session <%= it.sessionId %>";
-    
+    const template =
+      "Git command '<%= it.args[0] %>' approved in session <%= it.sessionId %>";
+
     const result = renderReason(template, data);
     assert(result === "Git command 'status' approved in session test-session");
   });
@@ -129,8 +150,9 @@ Deno.test("Template integration with rule builders", async (t) => {
   await t.step("blocked command with template data", () => {
     const ctx = createContext("cp", ["../file.txt", "dest.txt"], "/home/user");
     const data = createTemplateData(ctx, { action: "block" });
-    const template = "Blocked <%= it.command %> with <%= it.argCount %> arguments in <%= it.cwd %>";
-    
+    const template =
+      "Blocked <%= it.command %> with <%= it.argCount %> arguments in <%= it.cwd %>";
+
     const result = renderReason(template, data);
     assert(result === "Blocked cp with 2 arguments in /home/user");
   });
@@ -138,9 +160,12 @@ Deno.test("Template integration with rule builders", async (t) => {
   await t.step("dangerous command with session info", () => {
     const ctx = createContext("rm", ["-rf", "file.txt"]);
     const data = createTemplateData(ctx, { action: "block" });
-    const template = "Dangerous rm command '<%= it.command %>' blocked in session <%= it.sessionId %>";
-    
+    const template =
+      "Dangerous rm command '<%= it.command %>' blocked in session <%= it.sessionId %>";
+
     const result = renderReason(template, data);
-    assert(result === "Dangerous rm command 'rm' blocked in session test-session");
+    assert(
+      result === "Dangerous rm command 'rm' blocked in session test-session",
+    );
   });
 });

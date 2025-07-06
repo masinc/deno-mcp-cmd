@@ -1,8 +1,4 @@
-import type {
-  RuleAction,
-  RuleContext,
-  RuleTemplateData,
-} from "./types.ts";
+import type { RuleAction, RuleContext, RuleTemplateData } from "./types.ts";
 import { RuleTemplateDataSchema } from "./types.ts";
 import { Eta } from "eta";
 
@@ -33,7 +29,10 @@ export function renderReason(template: string, data: RuleTemplateData): string {
  * @param description - The warning description
  * @returns Formatted warning message with acknowledgment instructions
  */
-export function createWarningReason(ruleName: string, description: string): string {
+export function createWarningReason(
+  ruleName: string,
+  description: string,
+): string {
   return `${description}\n\nTo proceed anyway, add acknowledgeWarnings: ["${ruleName}"] to your request.`;
 }
 
