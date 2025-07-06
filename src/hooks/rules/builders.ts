@@ -26,6 +26,11 @@ function renderReason(template: string, data: RuleTemplateData): string {
   }
 }
 
+// Helper function to create standardized warning messages
+function createWarningReason(ruleName: string, description: string): string {
+  return `${description}\n\nTo proceed anyway, add acknowledgeWarnings: ["${ruleName}"] to your request.`;
+}
+
 // Helper function to create template data from context
 function createTemplateData(
   ctx: RuleContext,
@@ -226,21 +231,25 @@ export function warnShellExpansion(reason?: string): Rule {
       if (hasShellCommand || hasShellArgs) {
         // If warning is acknowledged, approve the command
         if (ctx.toolInput.acknowledgeWarnings?.includes("warn-shell-expansion")) {
+          const approveReason = reason
+            ? renderReason(reason, createTemplateData(ctx, {
+                action: "approve",
+              }))
+            : "Shell expansion warning acknowledged - command allowed but may not work as expected";
+          
           return { 
             action: "approve", 
-            reason: "Shell expansion warning acknowledged - command allowed but may not work as expected" 
+            reason: approveReason
           };
         }
         
-        // Otherwise, issue warning
-        const defaultReason = `Shell command syntax detected in '${ctx.toolInput.command}'. Backticks (\`) and command substitution ($()) cannot be expanded in this environment. Add acknowledgeWarnings: ["warn-shell-expansion"] if you understand this limitation and want to proceed anyway.`;
-        const finalReason = reason
-          ? renderReason(reason, createTemplateData(ctx, {
-              action: "warning",
-            }))
-          : defaultReason;
+        // Otherwise, issue warning (always use default message)
+        const warningReason = createWarningReason(
+          "warn-shell-expansion",
+          `Shell expansion syntax detected in command '${ctx.toolInput.command}'. In this MCP environment, $(command) and \`command\` are treated as literal text, not executed. Use a plain string instead.`
+        );
 
-        return { action: "warning", reason: finalReason };
+        return { action: "warning", reason: warningReason };
       }
       return null;
     },

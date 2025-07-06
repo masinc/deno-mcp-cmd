@@ -549,9 +549,9 @@ Deno.test("Shell expansion detection", async (t) => {
     
     const result1 = rule.condition(createContext("$(echo hello)"));
     assert(result1?.action === "warning");
-    assert(result1?.reason?.includes("Shell command syntax detected"));
-    assert(result1?.reason?.includes("cannot be expanded"));
-    assert(result1?.reason?.includes("Add acknowledgeWarnings: [\"warn-shell-expansion\"]"));
+    assert(result1?.reason?.includes("Shell expansion syntax detected"));
+    assert(result1?.reason?.includes("treated as literal text"));
+    assert(result1?.reason?.includes("add acknowledgeWarnings: [\"warn-shell-expansion\"]"));
     
     const result2 = rule.condition(createContext("ls"));
     assert(result2 === null);
@@ -562,8 +562,8 @@ Deno.test("Shell expansion detection", async (t) => {
     
     const result1 = rule.condition(createContext("`echo hello`"));
     assert(result1?.action === "warning");
-    assert(result1?.reason?.includes("Shell command syntax detected"));
-    assert(result1?.reason?.includes("cannot be expanded"));
+    assert(result1?.reason?.includes("Shell expansion syntax detected"));
+    assert(result1?.reason?.includes("treated as literal text"));
     
     const result2 = rule.condition(createContext("cat"));
     assert(result2 === null);
@@ -574,13 +574,13 @@ Deno.test("Shell expansion detection", async (t) => {
     
     const result1 = rule.condition(createContext("echo", ["$(whoami)", "test"]));
     assert(result1?.action === "warning");
-    assert(result1?.reason?.includes("Shell command syntax detected"));
-    assert(result1?.reason?.includes("cannot be expanded"));
+    assert(result1?.reason?.includes("Shell expansion syntax detected"));
+    assert(result1?.reason?.includes("treated as literal text"));
     
     const result2 = rule.condition(createContext("echo", ["`date`", "test"]));
     assert(result2?.action === "warning");
-    assert(result2?.reason?.includes("Shell command syntax detected"));
-    assert(result2?.reason?.includes("cannot be expanded"));
+    assert(result2?.reason?.includes("Shell expansion syntax detected"));
+    assert(result2?.reason?.includes("treated as literal text"));
     
     const result3 = rule.condition(createContext("echo", ["hello", "world"]));
     assert(result3 === null);
@@ -592,11 +592,11 @@ Deno.test("Shell expansion detection", async (t) => {
     // 部分一致のテスト
     const result1 = rule.condition(createContext("echo $(whoami)"));
     assert(result1?.action === "warning");
-    assert(result1?.reason?.includes("Shell command syntax detected"));
+    assert(result1?.reason?.includes("Shell expansion syntax detected"));
     
     const result2 = rule.condition(createContext("ls `date`"));
     assert(result2?.action === "warning");
-    assert(result2?.reason?.includes("Shell command syntax detected"));
+    assert(result2?.reason?.includes("Shell expansion syntax detected"));
     
     const result3 = rule.condition(createContext("cat file.txt"));
     assert(result3 === null);
@@ -610,14 +610,20 @@ Deno.test("Shell expansion detection", async (t) => {
     assert(result?.reason?.includes("warning acknowledged"));
   });
   
-  await t.step("warnShellExpansion with custom reason template", () => {
+  await t.step("warnShellExpansion with custom reason template for approve", () => {
     const rule = warnShellExpansion(
-      "Custom shell expansion warning: <%= it.command %> in session <%= it.sessionId %>"
+      "Custom approval: <%= it.command %> acknowledged in session <%= it.sessionId %>"
     );
     
-    const result = rule.condition(createContext("$(ls)"));
-    assert(result?.action === "warning");
-    assert(result?.reason === "Custom shell expansion warning: $(ls) in session test-session");
+    // Warning時は常に標準メッセージ
+    const result1 = rule.condition(createContext("$(ls)"));
+    assert(result1?.action === "warning");
+    assert(result1?.reason?.includes("Shell expansion syntax detected"));
+    
+    // Approve時はカスタムテンプレート使用
+    const result2 = rule.condition(createContext("$(ls)", [], undefined, ["warn-shell-expansion"]));
+    assert(result2?.action === "approve");
+    assert(result2?.reason === "Custom approval: $(ls) acknowledged in session test-session");
   });
   
   await t.step("warnShellExpansion rule name", () => {

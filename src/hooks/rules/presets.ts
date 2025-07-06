@@ -38,6 +38,6 @@ export const SECURITY_RULES: Rule[] = [
 
   // Warn about shell expansion attempts
   warnShellExpansion(
-    "Shell syntax detected in '<%= it.command %>'. Backticks (`) and command substitution ($()) cannot be expanded here. Add acknowledgeWarnings: [\"warn-shell-expansion\"] if you understand this limitation.",
+    "Shell expansion syntax detected in command '<%= it.command %>'. In this MCP environment, $(command) and `command` are treated as literal text, not executed. Use a plain string instead.\n\nTo proceed anyway, add acknowledgeWarnings: [\"warn-shell-expansion\"] to your request.",
   ),
 ];
