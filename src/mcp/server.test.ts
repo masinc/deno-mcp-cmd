@@ -6,7 +6,7 @@ import { initOrGetDrizzleDb } from "../db/drizzle.ts";
 
 // Test setup with database
 async function setupTestDb() {
-  await initOrGetDrizzleDb();
+  await initOrGetDrizzleDb({ inMemory: true, reset: true });
 }
 
 Deno.test("createMcpServer", async (t) => {

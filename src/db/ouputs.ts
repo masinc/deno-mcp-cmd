@@ -109,7 +109,8 @@ export async function deleteExpiredOutputs(
     const db = await initOrGetDrizzleDb();
     const expirationDate = new Date();
     expirationDate.setDate(expirationDate.getDate() - expirationDays);
-    const isoExpirationDate = expirationDate.toISOString();
+    // SQLite datetime('now') format: YYYY-MM-DD HH:MM:SS (no milliseconds)
+    const isoExpirationDate = expirationDate.toISOString().slice(0, 19).replace('T', ' ');
 
     const result = await db.delete(outputs).where(
       lt(outputs.createdAt, isoExpirationDate),

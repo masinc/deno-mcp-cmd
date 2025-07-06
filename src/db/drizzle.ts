@@ -6,19 +6,32 @@ import { ensureDir } from "@std/fs";
 import { homedir } from "node:os";
 let db: ReturnType<typeof drizzle> | null = null;
 
-export async function initOrGetDrizzleDb() {
+export async function initOrGetDrizzleDb(options?: { inMemory?: boolean; reset?: boolean }) {
+  if (options?.reset) {
+    db = null;
+  }
+  
   if (db) return db;
 
-  // データベースディレクトリとファイルパスを構築
-  const configDir = join(homedir(), ".config", "@masinc", "mcp-cmd");
-  const dbPath = join(configDir, "mcp-cmd.db");
+  let client;
+  
+  if (options?.inMemory) {
+    // インメモリDB使用
+    client = createClient({
+      url: ":memory:",
+    });
+  } else {
+    // データベースディレクトリとファイルパスを構築
+    const configDir = join(homedir(), ".config", "@masinc", "mcp-cmd");
+    const dbPath = join(configDir, "mcp-cmd.db");
 
-  // ディレクトリが存在しない場合は作成
-  await ensureDir(configDir);
+    // ディレクトリが存在しない場合は作成
+    await ensureDir(configDir);
 
-  const client = createClient({
-    url: "file:" + dbPath,
-  });
+    client = createClient({
+      url: "file:" + dbPath,
+    });
+  }
 
   db = drizzle(client);
 

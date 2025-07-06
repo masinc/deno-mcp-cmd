@@ -10,12 +10,8 @@ outputs:
 
 - **runCommand**: Execute shell commands asynchronously and capture
   stdout/stderr with output ID
-- **getStdoutById**: Retrieve stdout from a previous command execution
-- **getStderrById**: Retrieve stderr from a previous command execution
-- **getCommandStatus**: Check execution status of a command
-  (running/completed/failed)
-- **getCommandProgress**: Get detailed progress information with real-time
-  output
+- **getCommand**: Retrieve complete command results including status, exit code,
+  stdout, stderr, and metadata
 
 ## Installation & Usage
 
@@ -24,13 +20,13 @@ outputs:
 Run the MCP server in STDIO mode (for use with MCP clients):
 
 ```bash
-deno run --allow-run --allow-read --allow-write --allow-sys jsr:@masinc/mcp-cmd/bin/stdio
+deno run --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options jsr:@masinc/mcp-cmd/bin/stdio
 ```
 
 To ensure you're running the latest version:
 
 ```bash
-deno run --reload --allow-run --allow-read --allow-write --allow-sys jsr:@masinc/mcp-cmd/bin/stdio
+deno run --reload --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options jsr:@masinc/mcp-cmd/bin/stdio
 ```
 
 ### HTTP Mode
@@ -38,13 +34,13 @@ deno run --reload --allow-run --allow-read --allow-write --allow-sys jsr:@masinc
 Run the MCP server as an HTTP server:
 
 ```bash
-deno serve --allow-run --allow-read --allow-write --allow-sys jsr:@masinc/mcp-cmd/bin/http
+deno serve --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options jsr:@masinc/mcp-cmd/bin/http
 ```
 
 To ensure you're running the latest version:
 
 ```bash
-deno serve --reload --allow-run --allow-read --allow-write --allow-sys jsr:@masinc/mcp-cmd/bin/http
+deno serve --reload --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options jsr:@masinc/mcp-cmd/bin/http
 ```
 
 The HTTP server will be available at `http://localhost:8000/mcp`.
@@ -53,10 +49,10 @@ You can specify host and port:
 
 ```bash
 # Custom port
-deno serve --port 3000 --allow-run --allow-read --allow-write --allow-sys jsr:@masinc/mcp-cmd/bin/http
+deno serve --port 3000 --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options jsr:@masinc/mcp-cmd/bin/http
 
 # Custom host and port
-deno serve --host 0.0.0.0 --port 3000 --allow-run --allow-read --allow-write --allow-sys jsr:@masinc/mcp-cmd/bin/http
+deno serve --host 0.0.0.0 --port 3000 --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options jsr:@masinc/mcp-cmd/bin/http
 ```
 
 ## MCP Tools
@@ -78,26 +74,13 @@ that can be used to retrieve the results later.
 **Output:**
 
 - `id`: UUID output ID for retrieving results later
-- `status`: "started" (command execution begins asynchronously)
+- `status`: "running" (command execution begins asynchronously)
 
-### getStdoutById
+### getCommand
 
-Retrieve the stdout (standard output) from a previously executed command using
-its output ID.
-
-**Input:**
-
-- `id`: The UUID output ID returned from a previous runCommand execution
-
-**Output:**
-
-- `content`: The stdout content (base64 encoded if binary data)
-- `base64Encoded`: Boolean indicating if content is base64 encoded
-
-### getStderrById
-
-Retrieve the stderr (standard error) from a previously executed command using
-its output ID.
+Retrieve complete information about a command execution including status, exit
+code, stdout, stderr, and metadata. This is the primary tool for checking
+command results after running a command with runCommand.
 
 **Input:**
 
@@ -105,54 +88,70 @@ its output ID.
 
 **Output:**
 
-- `content`: The stderr content (base64 encoded if binary data)
-- `base64Encoded`: Boolean indicating if content is base64 encoded
-
-### getCommandStatus
-
-Check the execution status of a command by its output ID.
-
-**Input:**
-
-- `id`: The UUID output ID returned from a previous runCommand execution
-
-**Output:**
-
-- `status`: "running", "completed", "failed", or "not_found"
-
-### getCommandProgress
-
-Get detailed progress information of a command execution including status, exit
-code, output availability, and current output (useful for monitoring running
-commands).
-
-**Input:**
-
-- `id`: The UUID output ID returned from a previous runCommand execution
-
-**Output:**
-
-- `status`: Command execution status
-- `exitCode`: Exit code (null if still running)
+- `id`: The command output ID
+- `status`: Command execution status ("running", "completed", "failed")
+- `exitCode`: Process exit code (null if still running)
 - `hasOutput`: Boolean indicating if command has produced output
-- `currentOutput`: Real-time output data including stdout/stderr
+- `stdout`: Object containing stdout content and encoding information
+  - `content`: The stdout content (base64 encoded if binary data)
+  - `isEncoded`: Boolean indicating if content is base64 encoded
+- `stderr`: Object containing stderr content and encoding information
+  - `content`: The stderr content (base64 encoded if binary data)
+  - `isEncoded`: Boolean indicating if content is base64 encoded
+- `createdAt`: ISO timestamp when the command was started
+
+## Architecture
+
+### Worker Pool System
+
+Commands are executed using a worker pool architecture for optimal performance:
+
+- **Concurrent Execution**: Multiple commands can run simultaneously
+- **Resource Management**: Configurable worker pool size based on CPU cores
+- **Isolation**: Each command runs in a separate worker thread
+- **Security**: Workers run with minimal required permissions
+
+### Database Layer
+
+- **Drizzle ORM**: Type-safe database operations with SQLite
+- **Flexible Configuration**: File-based storage for production, in-memory for
+  testing
+- **Automatic Schema**: Database tables created automatically on startup
+- **Data Lifecycle**: Expired command outputs automatically cleaned up
 
 ## Key Features
 
-- **Asynchronous Execution**: Commands run non-blocking with real-time status
-  tracking
-- **Real-time Output Streaming**: Live updates to database during command
-  execution
-- **Binary Data Support**: Automatically detects and base64 encodes binary
-  output
-- **Command Status Tracking**: Monitor running/completed/failed states
-- **Command Chaining**: Use output from one command as input to another via
-  `stdinForOutput`
-- **Chronological Output**: stdout/stderr mixed in correct time order for
-  display
-- **Persistent Storage**: Command outputs stored in SQLite database with
-  automatic cleanup
-- **Cross-Platform**: Works on Linux, macOS, and Windows
+- **Asynchronous Execution**: Non-blocking command execution with worker pools
+- **Command Chaining**: Pipe output from one command to another
+- **Binary Data Support**: Automatic base64 encoding for binary output
+- **Flexible Storage**: SQLite for production, in-memory for testing
+- **Cross-Platform**: Linux, macOS, and Windows support
+- **Comprehensive Testing**: Full test coverage with fast in-memory database
+
+## Development
+
+### Running Tests
+
+The project includes comprehensive unit and integration tests:
+
+```bash
+# Run all tests
+deno task test
+
+# Run only unit tests
+deno task test:unit
+
+# Run only integration tests  
+deno task test:integration
+```
+
+Tests use in-memory SQLite databases for fast, isolated execution.
+
+### Database
+
+- **Production**: SQLite database stored in `~/.config/@masinc/mcp-cmd/`
+- **Testing**: In-memory SQLite database for fast, isolated tests
+- **Cleanup**: Automatic removal of expired command outputs (1 day default)
 
 ## Requirements
 

@@ -7,7 +7,7 @@ Deno.test("MCP Server Integration", async (t) => {
   let _server: Awaited<ReturnType<typeof createMcpServer>>;
 
   await t.step("setup", async () => {
-    await initOrGetDrizzleDb();
+    await initOrGetDrizzleDb({ inMemory: true, reset: true });
     _server = await createMcpServer();
   });
 
