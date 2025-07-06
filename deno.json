@@ -17,6 +17,7 @@
     "inspect-http": "npx @modelcontextprotocol/inspector \"http://localhost:8000/mcp\"",
     "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options src/bin/stdio.ts",
     "inspect-stdio": "npx @modelcontextprotocol/inspector deno task run-stdio",
+    "hooks:init": "deno run --allow-read --allow-write --allow-env src/bin/hooks-init.ts",
     "open:hook-log": "code ~/.cache/@masinc/mcp-cmd/hook.log",
     "open:hooks-config": "code ~/.config/@masinc/mcp-cmd/hooks-rules.yaml"
   },
