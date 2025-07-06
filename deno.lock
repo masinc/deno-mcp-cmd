@@ -16,6 +16,7 @@
     "npm:@types/node@*": "22.15.15",
     "npm:drizzle-orm@~0.44.2": "0.44.2",
     "npm:drizzle-zod@~0.8.2": "0.8.2_drizzle-orm@0.44.2_zod@3.25.74",
+    "npm:eta@^3.5.0": "3.5.0",
     "npm:hono@^4.8.4": "4.8.4",
     "npm:zod@^3.25.74": "3.25.74"
   },
@@ -305,6 +306,9 @@
     },
     "escape-html@1.0.3": {
       "integrity": "sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow=="
+    },
+    "eta@3.5.0": {
+      "integrity": "sha512-e3x3FBvGzeCIHhF+zhK8FZA2vC5uFn6b4HJjegUbIWrDb4mJ7JjTGMJY9VGIbRVpmSwHopNiaJibhjIr+HfLug=="
     },
     "etag@1.8.1": {
       "integrity": "sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg=="
@@ -742,6 +746,7 @@
       "npm:@modelcontextprotocol/sdk@^1.15.0",
       "npm:drizzle-orm@~0.44.2",
       "npm:drizzle-zod@~0.8.2",
+      "npm:eta@^3.5.0",
       "npm:hono@^4.8.4",
       "npm:zod@^3.25.74"
     ]

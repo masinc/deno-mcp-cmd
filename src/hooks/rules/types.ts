@@ -30,3 +30,29 @@ export const RuleSchema = z.object({
     .returns(z.union([RuleResultSchema, z.null()])),
 });
 export type Rule = z.infer<typeof RuleSchema>;
+
+export const RuleTemplateDataSchema = z.object({
+  // Core command information
+  command: z.string(),
+  args: z.array(z.string()).optional(),
+  cwd: z.string().optional(),
+  sessionId: z.string(),
+
+  // Rule-specific data
+  action: RuleActionSchema,
+  actionVerb: z.string(),
+  
+  // Pattern-specific data
+  pattern: z.string().optional(),
+  
+  // Flag-specific data
+  dangerousFlags: z.array(z.string()).optional(),
+  flagCount: z.number().optional(),
+  
+  // Path-specific data
+  argCount: z.number().optional(),
+  
+  // Custom rule data
+  ruleName: z.string().optional(),
+});
+export type RuleTemplateData = z.infer<typeof RuleTemplateDataSchema>;

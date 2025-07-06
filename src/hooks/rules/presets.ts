@@ -1,91 +1,37 @@
 import type { Rule } from "./types.ts";
 import {
-  findDangerousPathsInArgs,
-  isAllPathsWithinCurrentDirectory,
-} from "./path-utils.ts";
+  blockCommand,
+  blockOutsideCurrentDirectory,
+  createCommandRule,
+} from "./builders.ts";
 
 export const SECURITY_RULES: Rule[] = [
-  {
-    name: "block_dangerous_rm",
-    condition: (ctx) => {
-      if (ctx.toolInput.command === "rm") {
-        const dangerousFlags = ["-rf", "-r", "--recursive", "--force"];
-        const hasDangerous = ctx.toolInput.args?.some((arg) =>
-          dangerousFlags.includes(arg)
-        );
+  // Block directory navigation
+  blockCommand("cd", "Directory navigation via cd not allowed"),
 
-        if (hasDangerous) {
-          return {
-            action: "block",
-            reason: `Dangerous rm command with flags: ${
-              ctx.toolInput.args?.filter((arg) => dangerousFlags.includes(arg))
-                .join(", ")
-            }`,
-          };
-        }
-      }
-      return null;
-    },
-  },
+  // Block shell commands with eta template
+  createCommandRule(
+    "block",
+    ["bash", "sh", "zsh", "fish", "csh", "tcsh", "ksh"],
+    "Shell command '<%= it.command %>' is not allowed for security reasons",
+  ),
 
-  {
-    name: "block_cd_command",
-    condition: (ctx) =>
-      ctx.toolInput.command === "cd"
-        ? { action: "block", reason: "Directory navigation via cd not allowed" }
-        : null,
-  },
+  // Confirm network commands (using unified API)
+  createCommandRule(
+    "confirm",
+    ["curl", "wget", "nc", "netcat"],
+    "Network command '<%= it.command %>'",
+  ),
 
-  {
-    name: "confirm_network_commands",
-    condition: (ctx) =>
-      ["curl", "wget", "nc", "netcat"].includes(ctx.toolInput.command)
-        ? { action: "confirm", reason: "Network command requires confirmation" }
-        : null,
-  },
+  // Block privilege escalation (using unified API)
+  createCommandRule(
+    "block",
+    ["sudo", "su", "doas"],
+    "Privilege escalation command '<%= it.command %>' not allowed",
+  ),
 
-  {
-    name: "block_privilege_escalation",
-    condition: (ctx) =>
-      ["sudo", "su", "doas"].includes(ctx.toolInput.command)
-        ? {
-          action: "block",
-          reason: "Privilege escalation commands not allowed",
-        }
-        : null,
-  },
-
-  {
-    name: "block_outside_current_directory",
-    condition: (ctx) => {
-      const args = ctx.toolInput.args || [];
-      if (args.length === 0) return null;
-
-      if (!isAllPathsWithinCurrentDirectory(args, ctx.toolInput.cwd)) {
-        return {
-          action: "block",
-          reason: "Operations outside current directory not allowed",
-        };
-      }
-      return null;
-    },
-  },
-
-  {
-    name: "block_dangerous_paths",
-    condition: (ctx) => {
-      const args = ctx.toolInput.args || [];
-      const dangerousPaths = findDangerousPathsInArgs(args);
-
-      if (dangerousPaths.length > 0) {
-        return {
-          action: "block",
-          reason: `Dangerous system paths not allowed: ${
-            dangerousPaths.join(", ")
-          }`,
-        };
-      }
-      return null;
-    },
-  },
+  // Path-based security rules with template
+  blockOutsideCurrentDirectory(
+    "Command '<%= it.command %>' with <%= it.argCount %> args blocked - operations outside current directory not allowed",
+  ),
 ];
