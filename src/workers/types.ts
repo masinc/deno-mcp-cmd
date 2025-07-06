@@ -1,4 +1,4 @@
-import type { OutputId } from "../db/types.ts";
+import type { OutputId } from "../db/schema.ts";
 
 // コマンド実行オプション
 export interface CommandOptions {

@@ -31,3 +31,19 @@ export type OutputId = z.infer<typeof OutputIdSchema>;
 
 export const CommandStatusSchema = z.enum(["running", "completed", "failed"]);
 export type CommandStatus = z.infer<typeof CommandStatusSchema>;
+
+// Additional Zod schema for complete output validation
+export const OutputSchema = z.object({
+  id: OutputIdSchema,
+  stdout: z.string(),
+  stdoutIsEncoded: z.boolean(),
+  stderr: z.string().default(""),
+  stderrIsEncoded: z.boolean(),
+  status: CommandStatusSchema.default("running"),
+  exitCode: z.number().nullable().default(null),
+  cwd: z.string(),
+  createdAt: z.string().datetime(),
+});
+
+// Additional type for complete output validation
+export type OutputValidation = z.infer<typeof OutputSchema>;

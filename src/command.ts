@@ -4,7 +4,7 @@ import {
   insertOutput,
   updateOutput,
 } from "./db/ouputs.ts";
-import type { CommandStatus, OutputId } from "./db/types.ts";
+import type { CommandStatus, OutputId } from "./db/schema.ts";
 import { getWorkerPool, terminateWorkerPool } from "./workers/worker-pool.ts";
 import type { CommandOptions, TaskResult } from "./workers/types.ts";
 import { homedir } from "node:os";

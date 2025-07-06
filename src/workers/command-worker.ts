@@ -8,7 +8,7 @@
  * - Error handling and reporting
  */
 
-import type { OutputId } from "../db/types.ts";
+import type { OutputId } from "../db/schema.ts";
 import type { StreamData, WorkerMessage, WorkerResponse } from "./types.ts";
 
 // Track running processes for cancellation

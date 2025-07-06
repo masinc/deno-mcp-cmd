@@ -1,4 +1,4 @@
-import type { OutputId } from "../db/types.ts";
+import type { OutputId } from "../db/schema.ts";
 import { updateOutput, updateStreamOutput } from "../db/ouputs.ts";
 import type {
   CommandOptions,
