@@ -1,24 +1,23 @@
 import { initOrGetDrizzleDb, outputs } from "./drizzle.ts";
 import type { OutputId } from "./schema.ts";
+import { OutputIdSchema } from "./schema.ts";
 import { eq, lt } from "drizzle-orm";
 import { decodeBase64, encodeBase64 } from "@std/encoding";
 
 export function createOutputId(): OutputId {
   // 9桁数字 = 3トークン、10億パターン (25トークンから88%削減)
   const id = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
-  return id as OutputId;
+  return OutputIdSchema.parse(id);
 }
 
 export function isOutputId(id: unknown): id is OutputId {
-  // 9桁数字のIDバリデーション
-  return typeof id === "string" && /^\d{9}$/.test(id);
+  // Zodスキーマを使用した型安全なバリデーション
+  return OutputIdSchema.safeParse(id).success;
 }
 
 export function idToString(id: OutputId): string {
-  if (!isOutputId(id)) {
-    throw new Error(`Invalid OutputId: ${id}`);
-  }
-  return id;
+  // Zodスキーマでバリデーション
+  return OutputIdSchema.parse(id);
 }
 
 type InsertOutputParams = {

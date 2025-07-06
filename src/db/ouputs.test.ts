@@ -99,7 +99,6 @@ Deno.test("idToString", async (t) => {
         // deno-lint-ignore no-explicit-any
         () => idToString(id as any),
         Error,
-        "Invalid OutputId",
       );
     });
   });
