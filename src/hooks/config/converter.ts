@@ -286,18 +286,13 @@ function matchesArgsPattern(args: string[], pattern: ArgsPattern): boolean {
 }
 
 function matchesArgsStartsWith(args: string[], prefixes: string[]): boolean {
-  // Check if args array starts with the specified prefix array
-  if (args.length < prefixes.length) {
+  // Check if the first argument starts with any of the specified prefixes
+  if (args.length === 0) {
     return false;
   }
   
-  for (let i = 0; i < prefixes.length; i++) {
-    if (args[i] !== prefixes[i]) {
-      return false;
-    }
-  }
-  
-  return true;
+  const firstArg = args[0];
+  return prefixes.some(prefix => firstArg.startsWith(prefix));
 }
 
 function matchesCwdPattern(cwd: string | undefined, pattern: PathPattern): boolean {

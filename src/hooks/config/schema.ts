@@ -58,8 +58,8 @@ const ArgsPatternSchema = z.object({
     examples: [["run", "--rm"], ["apply", "-f", "config.yaml"]]
   }),
   startsWith: z.array(z.string()).optional().meta({
-    description: "Match if args start with this prefix (safe partial matching)",
-    examples: [["--oneline"], ["status"], ["--format=short"]]
+    description: "Match if the first argument starts with any of these prefixes (OR logic)",
+    examples: [["status", "log", "show"], ["--oneline"], ["push", "pull"]]
   }),
   regexAny: z.string().optional().meta({
     description: "Match if any arg matches this regex pattern (OR logic)",
@@ -159,7 +159,7 @@ const BlockCommandRuleSchema = BaseRuleSchema.extend({
       description: "Pattern to match against command arguments",
       examples: [
         { containsAny: ["--force", "-f"] },
-        { startsWith: ["push"], containsNone: ["-n", "--dry-run"] }
+        { startsWith: ["status", "log", "show"], containsNone: ["-n", "--dry-run"] }
       ],
       optional: "Can be omitted if command or cwd patterns are specified"
     }),
