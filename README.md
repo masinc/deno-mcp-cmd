@@ -68,8 +68,8 @@ that can be used to retrieve the results later.
   'node')
 - `args` (optional): Array of command-line arguments
 - `stdin` (optional): Text input to send to the command's stdin
-- `stdinForOutput` (optional): Output ID of a previous command's output to use as
-  stdin (enables command chaining)
+- `stdinForOutput` (optional): Output ID of a previous command's output to use
+  as stdin (enables command chaining)
 
 **Output:**
 
@@ -84,7 +84,8 @@ command results after running a command with runCommand.
 
 **Input:**
 
-- `id`: The 9-digit numeric output ID returned from a previous runCommand execution
+- `id`: The 9-digit numeric output ID returned from a previous runCommand
+  execution
 
 **Output:**
 

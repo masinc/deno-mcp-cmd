@@ -3,7 +3,7 @@
 // "mcp__cmd__getCommand",
 // "mcp__cmd__runCommand"
 
-import { logHookInput } from "../hooks/logger.ts";
+import { logger, logHookInput } from "../hooks/logger.ts";
 import { writeOutputAndExit } from "../hooks/output.ts";
 import {
   type PreToolUseInput,
@@ -12,6 +12,9 @@ import {
   TOOL_RUN,
   ToolInputRunSchema,
 } from "../hooks/types.ts";
+import { evaluateRules } from "../hooks/rules/engine.ts";
+import { SECURITY_RULES } from "../hooks/rules/presets.ts";
+import type { RuleContext } from "../hooks/rules/types.ts";
 
 async function readStdin(): Promise<string> {
   const decoder = new TextDecoder();
@@ -33,14 +36,40 @@ function hookToolRun(input: PreToolUseInput): Promise<never> {
 
   const toolInput = toolInputResult.data;
 
-  if (toolInput.command === "cd") {
-    writeOutputAndExit({
-      decision: "block",
-      reason: "Tool run command 'cd' is not allowed.",
-    });
-  }
+  const context: RuleContext = {
+    toolInput,
+    sessionId: input.session_id,
+    transcriptPath: input.transcript_path,
+    timestamp: new Date(),
+  };
 
-  writeOutputAndExit({});
+  const result = evaluateRules(SECURITY_RULES, context);
+
+  switch (result.action) {
+    case "block":
+      writeOutputAndExit({
+        decision: "block",
+        reason: result.reason,
+      });
+      break;
+    case "confirm":
+      writeOutputAndExit({
+        reason: result.reason,
+      });
+      break;
+    case "approve":
+      writeOutputAndExit({
+        decision: "approve",
+        reason: result.reason,
+      });
+      break;
+    case "skip":
+      writeOutputAndExit({});
+      break;
+    default:
+      console.error("Unknown action:", result.action);
+      Deno.exit(1);
+  }
 }
 
 function hookToolGet(_input: PreToolUseInput): Promise<never> {
@@ -69,6 +98,8 @@ async function main() {
 
   const input = parsedInput.data;
   logHookInput(input);
+
+  logger.info(`Current Directory: ${Deno.cwd()}`);
 
   const toolFunction = toolFunctions[input.tool_name];
   if (toolFunction) {

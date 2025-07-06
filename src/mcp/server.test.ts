@@ -89,6 +89,7 @@ Deno.test("database operations", async (t) => {
       exitCode: 0,
       stdoutIsEncoded: false,
       stderrIsEncoded: false,
+      cwd: "/test/path",
     });
 
     const output = await getOutputById(outputId);
@@ -123,6 +124,7 @@ Deno.test("base64 encoding", async (t) => {
       exitCode: 0,
       stdoutIsEncoded: true,
       stderrIsEncoded: false,
+      cwd: "/test/path",
     });
 
     const output = await getOutputById(outputId);
@@ -193,6 +195,7 @@ Deno.test("runCommand tool edge cases", async (t) => {
         exitCode: 0,
         stdoutIsEncoded: true,
         stderrIsEncoded: false,
+        cwd: "/test/path",
       });
 
       // Test decoding logic
@@ -297,6 +300,7 @@ Deno.test("MCP server responses", async (t) => {
       exitCode: 0,
       stdoutIsEncoded: false,
       stderrIsEncoded: false,
+      cwd: "/test/path",
     });
 
     const output = await getOutputById(outputId);

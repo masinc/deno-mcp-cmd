@@ -6,7 +6,7 @@ import { decodeBase64, encodeBase64 } from "@std/encoding";
 
 export function createOutputId(): OutputId {
   // 9桁数字 = 3トークン、10億パターン (25トークンから88%削減)
-  const id = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
+  const id = Math.floor(Math.random() * 1000000000).toString().padStart(9, "0");
   return OutputIdSchema.parse(id);
 }
 
@@ -115,7 +115,10 @@ export async function deleteExpiredOutputs(
     const expirationDate = new Date();
     expirationDate.setDate(expirationDate.getDate() - expirationDays);
     // SQLite datetime('now') format: YYYY-MM-DD HH:MM:SS (no milliseconds)
-    const isoExpirationDate = expirationDate.toISOString().slice(0, 19).replace('T', ' ');
+    const isoExpirationDate = expirationDate.toISOString().slice(0, 19).replace(
+      "T",
+      " ",
+    );
 
     const result = await db.delete(outputs).where(
       lt(outputs.createdAt, isoExpirationDate),
