@@ -16,11 +16,14 @@
     "run-http": "deno serve --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options src/bin/http.ts",
     "inspect-http": "npx @modelcontextprotocol/inspector \"http://localhost:8000/mcp\"",
     "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options src/bin/stdio.ts",
-    "inspect-stdio": "npx @modelcontextprotocol/inspector deno task run-stdio"
+    "inspect-stdio": "npx @modelcontextprotocol/inspector deno task run-stdio",
+    "open:hook-log": "code ~/.cache/@masinc/mcp-cmd/hook.log"
   },
   "imports": {
     "@hono/mcp": "npm:@hono/mcp@^0.1.0",
     "@libsql/client": "npm:@libsql/client@^0.15.9",
+    "@logtape/file": "jsr:@logtape/file@^1.0.2",
+    "@logtape/logtape": "jsr:@logtape/logtape@^1.0.2",
     "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.15.0",
     "@std/assert": "jsr:@std/assert@1",
     "@std/encoding": "jsr:@std/encoding@^1.0.10",

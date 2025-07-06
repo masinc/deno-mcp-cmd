@@ -153,6 +153,46 @@ Tests use in-memory SQLite databases for fast, isolated execution.
 - **Testing**: In-memory SQLite database for fast, isolated tests
 - **Cleanup**: Automatic removal of expired command outputs (1 day default)
 
+## Hook Scripts
+
+This project includes hook scripts for use with Claude Code:
+
+### Available Hooks
+
+- **hooks-bash.ts**: Blocks Bash tool usage and redirects to MCP cmd tool
+- **hooks-cmd.ts**: Controls MCP cmd tool usage with command filtering
+
+### Example Usage
+
+Add to your Claude Code settings (`~/.claude.json`):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/path/to/mcp-cmd/src/bin/hooks-bash.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__cmd__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/path/to/mcp-cmd/src/bin/hooks-cmd.ts"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 ## Requirements
 
 - [Deno](https://deno.land/) runtime
