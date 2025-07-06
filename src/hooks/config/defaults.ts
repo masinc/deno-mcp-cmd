@@ -4,14 +4,14 @@ import type { UserRulesConfig } from "./schema.ts";
  * Default configuration and preset rules
  */
 
-export const DEFAULT_USER_RULES_CONFIG: UserRulesConfig = {
+export const EMPTY_PRESET_CONFIG: UserRulesConfig = {
   rules: [],
 };
 
 /**
- * Example configuration for documentation and testing
+ * Example preset configuration for documentation and testing
  */
-export const EXAMPLE_USER_RULES_CONFIG: UserRulesConfig = {
+export const EXAMPLE_PRESET_CONFIG: UserRulesConfig = {
   rules: [
     {
       name: "block-sudo",
@@ -65,7 +65,7 @@ export const EXAMPLE_USER_RULES_CONFIG: UserRulesConfig = {
 };
 
 /**
- * Default preset configuration (matches src/hooks/rules/presets.ts SECURITY_RULES)
+ * Default preset configuration
  */
 export const DEFAULT_PRESET_CONFIG: UserRulesConfig = {
   rules: [
@@ -237,32 +237,25 @@ export const DEVELOPMENT_PRESET_CONFIG: UserRulesConfig = {
 };
 
 /**
+ * Preset configurations mapping
+ */
+export const PRESET_CONFIGS = {
+  "default": DEFAULT_PRESET_CONFIG,
+  "development": DEVELOPMENT_PRESET_CONFIG,
+  "example": EXAMPLE_PRESET_CONFIG,
+  "empty": EMPTY_PRESET_CONFIG,
+} as const;
+
+/**
  * Get preset configuration by name
  */
 export function getPresetConfig(presetName: string): UserRulesConfig | null {
-  switch (presetName) {
-    case "default":
-    case "@mcp-cmd/default-preset":
-      return DEFAULT_PRESET_CONFIG;
-    case "development":
-    case "@mcp-cmd/development-preset":
-      return DEVELOPMENT_PRESET_CONFIG;
-    case "example":
-      return EXAMPLE_USER_RULES_CONFIG;
-    default:
-      return null;
-  }
+  return PRESET_CONFIGS[presetName as keyof typeof PRESET_CONFIGS] || null;
 }
 
 /**
  * List all available preset names
  */
 export function getAvailablePresets(): string[] {
-  return [
-    "default",
-    "@mcp-cmd/default-preset", 
-    "development",
-    "@mcp-cmd/development-preset",
-    "example",
-  ];
+  return Object.keys(PRESET_CONFIGS);
 }

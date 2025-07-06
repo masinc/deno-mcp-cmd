@@ -3,6 +3,7 @@ import type { Rule, RuleContext } from "../rules/types.ts";
 import { 
   PathPatternSchema,
   type UserRule, 
+  type UserRulesConfig,
   type BlockCommandRule, 
   type ApproveCommandRule,
   type ConfirmCommandRule,
@@ -319,4 +320,11 @@ function matchesCwdPattern(cwd: string | undefined, pattern: PathPattern): boole
   }
   
   return true;
+}
+
+/**
+ * Convert user rules configuration to array of internal rules
+ */
+export function convertUserRulesConfigToRules(config: UserRulesConfig): Rule[] {
+  return config.rules.map(convertUserRuleToRule);
 }

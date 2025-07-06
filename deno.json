@@ -17,7 +17,8 @@
     "inspect-http": "npx @modelcontextprotocol/inspector \"http://localhost:8000/mcp\"",
     "run-stdio": "deno run --allow-run --allow-read --allow-write --allow-sys --allow-env --allow-ffi --allow-net --unstable-worker-options src/bin/stdio.ts",
     "inspect-stdio": "npx @modelcontextprotocol/inspector deno task run-stdio",
-    "open:hook-log": "code ~/.cache/@masinc/mcp-cmd/hook.log"
+    "open:hook-log": "code ~/.cache/@masinc/mcp-cmd/hook.log",
+    "open:hooks-config": "code ~/.config/@masinc/mcp-cmd/hooks-rules.yaml"
   },
   "imports": {
     "@hono/mcp": "npm:@hono/mcp@^0.1.0",
@@ -26,6 +27,7 @@
     "@logtape/logtape": "jsr:@logtape/logtape@^1.0.2",
     "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.15.0",
     "@std/assert": "jsr:@std/assert@1",
+    "@std/cli": "jsr:@std/cli@^1.0.20",
     "@std/encoding": "jsr:@std/encoding@^1.0.10",
     "@std/fs": "jsr:@std/fs@^1.0.19",
     "@std/path": "jsr:@std/path@^1.1.1",

@@ -162,6 +162,42 @@ This project includes hook scripts for use with Claude Code:
 
 - **hooks-bash.ts**: Blocks Bash tool usage and redirects to MCP cmd tool
 - **hooks-cmd.ts**: Controls MCP cmd tool usage with command filtering
+- **hooks-init.ts**: Initialize hook configuration files with presets
+
+### Initializing Hook Configuration
+
+Use `hooks-init.ts` to create hook configuration files with predefined security rules:
+
+```bash
+# Create project-local configuration with default security preset
+deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --preset default --project
+
+# Create user-global configuration with development preset
+deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --preset development --user
+
+# View available options
+deno run --allow-env --allow-read --allow-write src/bin/hooks-init.ts --help
+```
+
+#### Available Presets
+
+- **default**: Comprehensive security rules (blocks dangerous commands, warns about shell expansion, etc.)
+- **development**: Development-friendly rules (git warnings, database confirmations)
+- **example**: Example configuration showing all rule types
+- **empty**: Empty configuration (no rules)
+
+#### Configuration Locations
+
+- **Project-local**: `./.mcp-cmd/hooks-rules.yaml` (use `--project`)
+- **User-global**: `~/.config/@masinc/mcp-cmd/hooks-rules.yaml` (use `--user`)
+
+The hook system automatically searches for configuration files in this order:
+1. `~/.config/@masinc/mcp-cmd/hooks-rules.yaml`
+2. `~/.config/@masinc/mcp-cmd/hooks-rules.yml`
+3. `~/.config/@masinc/mcp-cmd/hooks-rules.json`
+4. `./.mcp-cmd/hooks-rules.yaml`
+5. `./.mcp-cmd/hooks-rules.yml`
+6. `./.mcp-cmd/hooks-rules.json`
 
 ### Example Usage
 

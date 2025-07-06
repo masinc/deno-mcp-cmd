@@ -13,7 +13,8 @@ import {
   ToolInputRunSchema,
 } from "../hooks/types.ts";
 import { evaluateRules } from "../hooks/rules/engine.ts";
-import { SECURITY_RULES } from "../hooks/rules/presets.ts";
+import { loadAndMergeUserRules, DEFAULT_CONFIG_PATHS } from "../hooks/config/loader.ts";
+import { convertUserRulesConfigToRules } from "../hooks/config/converter.ts";
 import type { RuleContext } from "../hooks/rules/types.ts";
 
 async function readStdin(): Promise<string> {
@@ -27,7 +28,7 @@ async function readStdin(): Promise<string> {
   );
 }
 
-function hookToolRun(input: PreToolUseInput): Promise<never> {
+async function hookToolRun(input: PreToolUseInput): Promise<never> {
   // Normalize args if it's a string (convert to array)
   const normalizedToolInput = { ...input.tool_input };
   if (typeof normalizedToolInput.args === 'string') {
@@ -51,7 +52,9 @@ function hookToolRun(input: PreToolUseInput): Promise<never> {
     timestamp: new Date(),
   };
 
-  const result = evaluateRules(SECURITY_RULES, context);
+  const userRulesConfig = await loadAndMergeUserRules([...DEFAULT_CONFIG_PATHS]);
+  const rules = convertUserRulesConfigToRules(userRulesConfig);
+  const result = evaluateRules(rules, context);
 
   if (result.action === "block") {
     writeOutputAndExit({
