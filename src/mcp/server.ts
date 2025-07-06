@@ -20,84 +20,97 @@ export async function createMcpServer(): Promise<McpServer> {
       `A Model Context Protocol server for executing shell commands and managing their outputs. Provides tools to run commands (runCommand), retrieve stdout (getStdoutById), and retrieve stderr (getStderrById). Supports binary data, stdin input, and command chaining through output IDs.`,
   });
 
-  mcpServer.registerTool("runCommand", {
-    title: "Run Command",
-    description:
-      `Execute a shell command and capture both stdout and stderr. Returns an output ID that can be used to retrieve the results later. Supports binary data (automatically base64 encoded) and stdin input. Use this for running any command like 'ls', 'curl', 'git', etc.`,
+  mcpServer.registerTool(
+    "runCommand",
+    {
+      title: "Run Command",
+      description:
+        `Execute a shell command and capture both stdout and stderr. Returns an output ID that can be used to retrieve the results later. Supports binary data (automatically base64 encoded) and stdin input. Use this for running any command like 'ls', 'curl', 'git', etc.`,
 
-    inputSchema: {
-      command: z.string().describe(
-        "The base command to execute (e.g. 'ls', 'curl', 'git', 'python', 'node'). Do not include arguments here - use the 'args' parameter for arguments.",
-      ),
-      args: z.array(z.string()).optional().describe(
-        "Array of command-line arguments (e.g. ['-l', '-a'] for 'ls -l -a', or ['--version'] for version checks). Each argument should be a separate string in the array.",
-      ),
-      stdin: z.string().optional().describe(
-        "Text input to send to the command's stdin. Use this for interactive commands that expect input, or to pipe data into commands like 'grep' or 'sort'. Cannot be used together with stdinForOutput.",
-      ),
+      inputSchema: {
+        command: z.string().describe(
+          "The base command to execute (e.g. 'ls', 'curl', 'git', 'python', 'node'). Do not include arguments here - use the 'args' parameter for arguments.",
+        ),
+        args: z.array(z.string()).optional().describe(
+          "Array of command-line arguments (e.g. ['-l', '-a'] for 'ls -l -a', or ['--version'] for version checks). Each argument should be a separate string in the array.",
+        ),
+        stdin: z.string().optional().describe(
+          "Text input to send to the command's stdin. Use this for interactive commands that expect input, or to pipe data into commands like 'grep' or 'sort'. Cannot be used together with stdinForOutput.",
+        ),
 
-      stdinForOutput: OutputIdSchema.optional().describe(
-        "9-digit numeric output ID of a previous command's output to use as stdin for this command. This enables command chaining - the stdout from the referenced command will be fed into this command's stdin. Cannot be used together with stdin.",
-      ),
-      cwd: z.string().optional().describe(
-        "Working directory for the command execution. If not provided, uses the current working directory.",
-      ),
-      acknowledgeWarnings: z.array(z.string()).optional().describe(
-        "Array of warning names to acknowledge (e.g. ['warn-shell-expansion', 'warn-dangerous-flags']). Used to bypass specific warnings after understanding the risks.",
-      ),
+        stdinForOutput: OutputIdSchema.optional().describe(
+          "9-digit numeric output ID of a previous command's output to use as stdin for this command. This enables command chaining - the stdout from the referenced command will be fed into this command's stdin. Cannot be used together with stdin.",
+        ),
+        cwd: z.string().optional().describe(
+          "Working directory for the command execution. If not provided, uses the current working directory.",
+        ),
+        acknowledgeWarnings: z.array(z.string()).optional().describe(
+          "Array of warning names to acknowledge (e.g. ['warn-shell-expansion', 'warn-dangerous-flags']). Used to bypass specific warnings after understanding the risks.",
+        ),
+      },
     },
-  }, async ({ command, args, stdin, stdinForOutput, cwd, acknowledgeWarnings }) => {
-    // acknowledgeWarnings はルールチェックでのみ使用し、実際のコマンド実行には渡さない
-    const stdinContent = await (async () => {
-      if (stdin && stdinForOutput) {
-        throw new Error(
-          "Cannot use both stdin and stdinForOutput at the same time.",
-        );
-      }
+    async (
+      {
+        command,
+        args,
+        stdin,
+        stdinForOutput,
+        cwd,
+        acknowledgeWarnings: _acknowledgeWarnings,
+      },
+    ) => {
+      // acknowledgeWarnings はルールチェックでのみ使用し、実際のコマンド実行には渡さない
+      const stdinContent = await (async () => {
+        if (stdin && stdinForOutput) {
+          throw new Error(
+            "Cannot use both stdin and stdinForOutput at the same time.",
+          );
+        }
 
-      if (stdin && !stdinForOutput) {
-        return stdin;
-      }
+        if (stdin && !stdinForOutput) {
+          return stdin;
+        }
 
-      if (!stdinForOutput) {
-        return;
-      }
+        if (!stdinForOutput) {
+          return;
+        }
 
-      if (!isOutputId(stdinForOutput)) {
-        throw new Error(`Invalid output ID: ${stdinForOutput}`);
-      }
+        if (!isOutputId(stdinForOutput)) {
+          throw new Error(`Invalid output ID: ${stdinForOutput}`);
+        }
 
-      const output = await getOutputById(stdinForOutput);
-      if (!output) {
-        throw new Error(`Output with ID ${stdinForOutput} not found.`);
-      }
+        const output = await getOutputById(stdinForOutput);
+        if (!output) {
+          throw new Error(`Output with ID ${stdinForOutput} not found.`);
+        }
 
-      if (output.stdoutIsEncoded) {
-        return new TextDecoder().decode(decodeBase64(output.stdout));
-      }
+        if (output.stdoutIsEncoded) {
+          return new TextDecoder().decode(decodeBase64(output.stdout));
+        }
 
-      return output.stdout;
-    })();
+        return output.stdout;
+      })();
 
-    const result = await runCommand(command, {
-      args: args,
-      cwd: cwd || Deno.cwd(),
-      stdin: stdinContent,
-    });
+      const result = await runCommand(command, {
+        args: args,
+        cwd: cwd || Deno.cwd(),
+        stdin: stdinContent,
+      });
 
-    const structuredContent = {
-      id: idToString(result.id),
-      status: result.status,
-    };
+      const structuredContent = {
+        id: idToString(result.id),
+        status: result.status,
+      };
 
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify(structuredContent),
-      }],
-      structuredContent: structuredContent,
-    };
-  });
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(structuredContent),
+        }],
+        structuredContent: structuredContent,
+      };
+    },
+  );
 
   mcpServer.registerTool("getCommand", {
     title: "Get Command Result",

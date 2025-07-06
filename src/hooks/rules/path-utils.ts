@@ -83,4 +83,3 @@ export function isAllPathsWithinCurrentDirectory(
 
   return paths.every((path) => isWithinCurrentDirectory(path, currentDir));
 }
-

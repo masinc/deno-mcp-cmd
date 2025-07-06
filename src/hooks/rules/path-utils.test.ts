@@ -33,11 +33,11 @@ Deno.test("isWithinCurrentDirectory", async (t) => {
   await t.step("エッジケース", () => {
     // 空文字列
     assert(isWithinCurrentDirectory("", "/home/user"));
-    
+
     // 複雑な相対パス
     assert(isWithinCurrentDirectory("./a/b/../c/file.txt", "/home/user"));
     assert(!isWithinCurrentDirectory("./a/../../file.txt", "/home/user"));
-    
+
     // Windows風パス
     assert(isWithinCurrentDirectory("src\\file.txt", "/home/user"));
   });
@@ -122,31 +122,31 @@ Deno.test("extractPathsFromArgs", async (t) => {
   await t.step("エッジケース", () => {
     // 空配列
     assertEquals(extractPathsFromArgs([]), []);
-    
+
     // 特殊文字を含むパス
     assertEquals(
       extractPathsFromArgs(["file name with spaces.txt"]),
       ["file name with spaces.txt"],
     );
-    
+
     // 拡張子のないファイル（isPathLikeはドットを含むもののみマッチ）
     assertEquals(
       extractPathsFromArgs(["README", "Makefile"]),
       [],
     );
-    
+
     // ドットファイル
     assertEquals(
       extractPathsFromArgs([".env", ".gitignore"]),
       [".env", ".gitignore"],
     );
-    
+
     // 単一ドット・ダブルドット
     assertEquals(
       extractPathsFromArgs([".", ".."]),
       [".", ".."],
     );
-    
+
     // ホームディレクトリ
     assertEquals(
       extractPathsFromArgs(["~/file.txt", "~/.config"]),
@@ -160,13 +160,13 @@ Deno.test("extractPathsFromArgs", async (t) => {
       extractPathsFromArgs(["-o", "./output.txt"]),
       ["./output.txt"],
     );
-    
+
     // 複数のイコールを含む
     assertEquals(
       extractPathsFromArgs(["--config=key=value.conf"]),
       ["key=value.conf"],
     );
-    
+
     // 空の値
     assertEquals(
       extractPathsFromArgs(["--file="]),
@@ -239,12 +239,12 @@ Deno.test("isAllPathsWithinCurrentDirectory", async (t) => {
     assert(
       isAllPathsWithinCurrentDirectory([], testCwd),
     );
-    
+
     // パスっぽい引数がない場合
     assert(
       isAllPathsWithinCurrentDirectory(["--verbose", "-x", "command"], testCwd),
     );
-    
+
     // currentDirが未指定
     const result = isAllPathsWithinCurrentDirectory(["./test.txt"]);
     assert(typeof result === "boolean");
@@ -255,12 +255,12 @@ Deno.test("isAllPathsWithinCurrentDirectory", async (t) => {
     assert(
       isAllPathsWithinCurrentDirectory(["."], testCwd),
     );
-    
+
     // 親ディレクトリへの参照
     assert(
       !isAllPathsWithinCurrentDirectory([".."], testCwd),
     );
-    
+
     // 複雑な相対パス
     assert(
       isAllPathsWithinCurrentDirectory(["./a/b/../c/file.txt"], testCwd),
@@ -275,20 +275,19 @@ Deno.test("isAllPathsWithinCurrentDirectory", async (t) => {
     assert(
       !isAllPathsWithinCurrentDirectory([
         "safe.txt",
-        "dir/safe2.txt", 
+        "dir/safe2.txt",
         "../dangerous.txt",
-        "another.txt"
+        "another.txt",
       ], testCwd),
     );
-    
+
     // オプション内の危険なパス
     assert(
       !isAllPathsWithinCurrentDirectory([
         "safe.txt",
         "--output=/tmp/out.txt",
-        "-i=./input.txt"
+        "-i=./input.txt",
       ], testCwd),
     );
   });
 });
-

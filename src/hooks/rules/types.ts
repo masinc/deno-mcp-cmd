@@ -1,6 +1,12 @@
 import * as z from "zod";
 
-export const RuleActionSchema = z.enum(["block", "warning", "approve", "confirm", "skip"]);
+export const RuleActionSchema = z.enum([
+  "block",
+  "warning",
+  "approve",
+  "confirm",
+  "skip",
+]);
 export type RuleAction = z.infer<typeof RuleActionSchema>;
 
 export const RuleContextSchema = z.object({
@@ -42,13 +48,13 @@ export const RuleTemplateDataSchema = z.object({
   // Rule-specific data
   action: RuleActionSchema,
   actionVerb: z.string(),
-  
+
   // Pattern-specific data
   pattern: z.string().optional(),
-  
+
   // Path-specific data
   argCount: z.number().optional(),
-  
+
   // Custom rule data
   ruleName: z.string().optional(),
 });

@@ -2,11 +2,35 @@ import type { Rule } from "./types.ts";
 import {
   blockCommand,
   blockOutsideCurrentDirectory,
-  warnShellExpansion,
   createCommandRule,
+  createPatternBasedRule,
+  warnShellExpansion,
 } from "./builders.ts";
 
 export const SECURITY_RULES: Rule[] = [
+  // Approve safe git commands first (higher priority)
+  createPatternBasedRule({
+    name: "approve-safe-git-commands",
+    cmd: "git",
+    args: [[
+      "status",
+      "log",
+      "show",
+      "diff",
+      "help",
+      "version",
+      "describe",
+      "shortlog",
+      "blame",
+      "grep",
+      "ls-files",
+      "rev-parse",
+    ], "**"],
+    action: "approve",
+    reason:
+      "Safe git command '<%= it.args[0] %>' approved for read-only operations",
+  }),
+
   // Block directory navigation
   blockCommand("cd", "Directory navigation via cd not allowed"),
 
