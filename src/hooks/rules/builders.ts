@@ -1,64 +1,18 @@
 import type {
   Rule,
   RuleAction,
-  RuleContext,
-  RuleTemplateData,
 } from "./types.ts";
-import { RuleTemplateDataSchema } from "./types.ts";
 import { isAllPathsWithinCurrentDirectory } from "./path-utils.ts";
-import { Eta } from "eta";
+import {
+  createTemplateData,
+  createWarningReason,
+  getActionVerb,
+  renderReason,
+} from "./template-utils.ts";
 
 /**
  * Simple rule builders for common patterns
  */
-
-// Create eta instance for rendering templates
-const eta = new Eta();
-
-// Helper function to render eta templates for reasons with strong typing
-function renderReason(template: string, data: RuleTemplateData): string {
-  try {
-    // Validate template data with Zod
-    const validatedData = RuleTemplateDataSchema.parse(data);
-    return eta.renderString(template, validatedData) as string;
-  } catch (_error) {
-    // Fallback to the template string if rendering fails
-    // Note: Error is silently ignored to maintain backward compatibility
-    return template;
-  }
-}
-
-// Helper function to create standardized warning messages
-function createWarningReason(ruleName: string, description: string): string {
-  return `${description}\n\nTo proceed anyway, add acknowledgeWarnings: ["${ruleName}"] to your request.`;
-}
-
-// Helper function to create template data from context
-function createTemplateData(
-  ctx: RuleContext,
-  additionalData: Partial<RuleTemplateData> = {},
-): RuleTemplateData {
-  const baseData = {
-    // Core command information from context
-    command: ctx.toolInput.command,
-    args: ctx.toolInput.args,
-    cwd: ctx.toolInput.cwd,
-    sessionId: ctx.sessionId,
-
-    // Additional computed fields
-    argCount: ctx.toolInput.args?.length || 0,
-  };
-
-  // Merge additional rule-specific data
-  const mergedData = { ...baseData, ...additionalData };
-
-  // Auto-generate actionVerb if action is provided but actionVerb is not
-  if (mergedData.action && !mergedData.actionVerb) {
-    mergedData.actionVerb = getActionVerb(mergedData.action);
-  }
-
-  return mergedData as RuleTemplateData;
-}
 
 // Unified command-based rules
 export function createCommandRule(
@@ -118,21 +72,6 @@ export function approveCommands(commands: string[], reason?: string): Rule {
   return createCommandRule("approve", commands, reason);
 }
 
-// Helper function to get appropriate verb for action
-function getActionVerb(action: RuleAction): string {
-  switch (action) {
-    case "block":
-      return "blocked";
-    case "warning":
-      return "warned";
-    case "confirm":
-      return "requires confirmation";
-    case "approve":
-      return "approved";
-    case "skip":
-      return "skipped";
-  }
-}
 
 // Flag-based rules
 export function blockCommandWithFlags(

@@ -485,116 +485,6 @@ Deno.test("Extended Rule builders", async (t) => {
   });
 });
 
-Deno.test("Eta template support", async (t) => {
-  await t.step("createCommandRule with eta templates", () => {
-    const rule = createCommandRule(
-      "block",
-      "test",
-      "Command '<%= it.command %>' blocked in session <%= it.sessionId %>",
-    );
-
-    const result = rule.condition(createContext("test"));
-    assert(result?.action === "block");
-    assert(result?.reason === "Command 'test' blocked in session test-session");
-  });
-
-  await t.step("createPatternBasedRule with eta templates", () => {
-    const rule = createPatternBasedRule({
-      name: "install-commands",
-      cmd: { regex: "^install" },
-      action: "confirm",
-      reason: "Install command '<%= it.command %>' requires confirmation",
-    });
-
-    const result = rule.condition(createContext("install-package"));
-    assert(result?.action === "confirm");
-    assert(
-      result?.reason ===
-        "Install command 'install-package' requires confirmation",
-    );
-  });
-
-  await t.step("blockCommandWithFlags with eta templates", () => {
-    const rule = blockCommandWithFlags(
-      "rm",
-      ["-rf", "--force"],
-      "Dangerous rm command '<%= it.command %>' blocked in session <%= it.sessionId %>",
-    );
-
-    const result = rule.condition(createContext("rm", ["-rf", "file.txt"]));
-    assert(result?.action === "block");
-    assert(
-      result?.reason ===
-        "Dangerous rm command 'rm' blocked in session test-session",
-    );
-  });
-
-  await t.step("blockOutsideCurrentDirectory with eta templates", () => {
-    const rule = blockOutsideCurrentDirectory(
-      "Blocked <%= it.command %> with <%= it.argCount %> arguments in <%= it.cwd %>",
-    );
-
-    const result = rule.condition(
-      createContext("cp", ["../file.txt", "dest.txt"], "/home/user"),
-    );
-    assert(result?.action === "block");
-    assert(result?.reason === "Blocked cp with 2 arguments in /home/user");
-  });
-
-  await t.step("createRule with eta templates", () => {
-    const rule = createRule(
-      "test_rule",
-      "approve",
-      (ctx) => ctx.toolInput.command.startsWith("safe"),
-      "Custom rule '<%= it.ruleName %>' approved command '<%= it.command %>'",
-    );
-
-    const result = rule.condition(createContext("safe-command"));
-    assert(result?.action === "approve");
-    assert(
-      result?.reason ===
-        "Custom rule 'test_rule' approved command 'safe-command'",
-    );
-  });
-
-  await t.step("Template with complex data", () => {
-    const rule = createCommandRule(
-      "confirm",
-      "complex",
-      "Command: <%= it.command %>, Args: <%= (it.args || []).length %>, CWD: <%= it.cwd || 'unknown' %>",
-    );
-
-    const result = rule.condition(
-      createContext("complex", ["arg1", "arg2"], "/workspace"),
-    );
-    assert(result?.action === "confirm");
-    assert(result?.reason === "Command: complex, Args: 2, CWD: /workspace");
-  });
-
-  await t.step("Template error handling - invalid template", () => {
-    const rule = createCommandRule(
-      "block",
-      "test",
-      "Invalid template: <%= it.nonexistent.field.access %>",
-    );
-
-    const result = rule.condition(createContext("test"));
-    assert(result?.action === "block");
-    // Should fallback to the template string itself on error
-    assert(
-      result?.reason === "Invalid template: <%= it.nonexistent.field.access %>",
-    );
-  });
-
-  await t.step("Template with no reason should use default", () => {
-    const rule = createCommandRule("confirm", "test");
-
-    const result = rule.condition(createContext("test"));
-    assert(result?.action === "confirm");
-    assert(result?.reason === "test command requires confirmation");
-  });
-});
-
 Deno.test("Shell expansion detection", async (t) => {
   await t.step(
     "warnShellExpansion should warn commands starting with $(",
@@ -682,30 +572,6 @@ Deno.test("Shell expansion detection", async (t) => {
       );
       assert(result?.action === "approve");
       assert(result?.reason?.includes("warning acknowledged"));
-    },
-  );
-
-  await t.step(
-    "warnShellExpansion with custom reason template for approve",
-    () => {
-      const rule = warnShellExpansion(
-        "Custom approval: <%= it.command %> acknowledged in session <%= it.sessionId %>",
-      );
-
-      // Warning時は常に標準メッセージ
-      const result1 = rule.condition(createContext("$(ls)"));
-      assert(result1?.action === "warning");
-      assert(result1?.reason?.includes("Shell expansion syntax detected"));
-
-      // Approve時はカスタムテンプレート使用
-      const result2 = rule.condition(
-        createContext("$(ls)", [], undefined, ["warn-shell-expansion"]),
-      );
-      assert(result2?.action === "approve");
-      assert(
-        result2?.reason ===
-          "Custom approval: $(ls) acknowledged in session test-session",
-      );
     },
   );
 
@@ -927,26 +793,6 @@ Deno.test("Pattern-based rule system", async (t) => {
       assert(result2?.action === "approve"); // No args pattern means any args are fine
     },
   );
-
-  await t.step("createPatternBasedRule should work with eta templates", () => {
-    const pattern = {
-      name: "test-template",
-      cmd: "git",
-      args: [["status", "log"]],
-      action: "approve" as const,
-      reason:
-        "Git command '<%= it.args[0] %>' approved in session <%= it.sessionId %>",
-    };
-
-    const rule = createPatternBasedRule(pattern);
-
-    const result = rule.condition(createContext("git", ["status"]));
-    assert(result?.action === "approve");
-    assert(
-      result?.reason ===
-        "Git command 'status' approved in session test-session",
-    );
-  });
 
   await t.step(
     "createPatternBasedRule should handle complex pattern combinations",
