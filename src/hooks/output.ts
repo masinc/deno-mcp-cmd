@@ -3,7 +3,7 @@ import {
   PreToolUseOutputSchema,
   type SimpleOutput,
   SimpleOutputSchema,
-} from "./types.ts";
+} from "./schema.ts";
 
 /**
  * Writes the output to stdout as JSON and exits the process

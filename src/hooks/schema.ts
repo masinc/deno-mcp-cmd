@@ -1,4 +1,4 @@
-import * as z from "zod";
+import * as z from "zod/v4";
 
 export const TOOL_RUN = "mcp__cmd__runCommand";
 export const TOOL_GET = "mcp__cmd__getCommand";
@@ -9,7 +9,7 @@ export const PreToolUseInputSchema = z.object({
   session_id: z.string(),
   transcript_path: z.string(),
   tool_name: z.string(),
-  tool_input: z.record(z.unknown()),
+  tool_input: z.record(z.string(), z.unknown()),
 });
 
 export type PreToolUseInput = z.infer<typeof PreToolUseInputSchema>;

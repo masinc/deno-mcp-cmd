@@ -11,7 +11,7 @@ import {
   TOOL_GET,
   TOOL_RUN,
   ToolInputRunSchema,
-} from "../hooks/types.ts";
+} from "../hooks/schema.ts";
 import { evaluateRules } from "../hooks/rules/engine.ts";
 import {
   DEFAULT_CONFIG_PATHS,
