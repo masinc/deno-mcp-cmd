@@ -7,6 +7,7 @@ import {
   idToString,
   isOutputId,
 } from "../db/ouputs.ts";
+import { OutputIdSchema } from "../db/schema.ts";
 import { decodeBase64 } from "@std/encoding";
 
 export async function createMcpServer(): Promise<McpServer> {
@@ -35,8 +36,8 @@ export async function createMcpServer(): Promise<McpServer> {
         "Text input to send to the command's stdin. Use this for interactive commands that expect input, or to pipe data into commands like 'grep' or 'sort'. Cannot be used together with stdinForOutput.",
       ),
 
-      stdinForOutput: z.string().uuid().optional().describe(
-        "UUID of a previous command's output to use as stdin for this command. This enables command chaining - the stdout from the referenced command will be fed into this command's stdin. Cannot be used together with stdin.",
+      stdinForOutput: OutputIdSchema.optional().describe(
+        "9-digit numeric output ID of a previous command's output to use as stdin for this command. This enables command chaining - the stdout from the referenced command will be fed into this command's stdin. Cannot be used together with stdin.",
       ),
     },
   }, async ({ command, args, stdin, stdinForOutput }) => {
@@ -97,8 +98,8 @@ export async function createMcpServer(): Promise<McpServer> {
       `Retrieve complete information about a command execution including status, exit code, stdout, stderr, and metadata. This is the primary tool for checking command results after running a command with runCommand.`,
 
     inputSchema: {
-      id: z.string().uuid().describe(
-        "The UUID output ID returned from a previous runCommand execution. Use this to get all information about the command execution.",
+      id: OutputIdSchema.describe(
+        "The 9-digit numeric output ID returned from a previous runCommand execution. Use this to get all information about the command execution.",
       ),
     },
   }, async ({ id }) => {
