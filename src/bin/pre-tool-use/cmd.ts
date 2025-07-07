@@ -3,22 +3,22 @@
 // "mcp__cmd__getCommand",
 // "mcp__cmd__runCommand"
 
-import { logger, logHookInput } from "../hooks/logger.ts";
-import { writeOutputAndExit } from "../hooks/output.ts";
+import { logger, logHookInput } from "../../hooks/logger.ts";
+import { writeOutputAndExit } from "../../hooks/output.ts";
 import {
   type PreToolUseInput,
   PreToolUseInputSchema,
   TOOL_GET,
   TOOL_RUN,
   ToolInputRunSchema,
-} from "../hooks/schema.ts";
-import { evaluateRules } from "../hooks/rules/engine.ts";
+} from "../../hooks/schema.ts";
+import { evaluateRules } from "../../hooks/rules/engine.ts";
 import {
   DEFAULT_CONFIG_PATHS,
   loadAndMergeUserRules,
-} from "../hooks/config/loader.ts";
-import { convertUserRulesConfigToRules } from "../hooks/config/converter.ts";
-import type { RuleContext } from "../hooks/rules/schema.ts";
+} from "../../hooks/config/loader.ts";
+import { convertUserRulesConfigToRules } from "../../hooks/config/converter.ts";
+import type { RuleContext } from "../../hooks/rules/schema.ts";
 
 async function readStdin(): Promise<string> {
   const decoder = new TextDecoder();

@@ -160,8 +160,8 @@ This project includes hook scripts for use with Claude Code:
 
 ### Available Hooks
 
-- **hooks-bash.ts**: Blocks Bash tool usage and redirects to MCP cmd tool
-- **hooks-cmd.ts**: Controls MCP cmd tool usage with command filtering
+- **pre-tool-use/bash.ts**: Blocks Bash tool usage and redirects to MCP cmd tool
+- **pre-tool-use/cmd.ts**: Controls MCP cmd tool usage with command filtering
 - **hooks-init.ts**: Initialize hook configuration files with presets and
   generate JSON Schema
 
@@ -226,7 +226,7 @@ Add to your Claude Code settings (`~/.claude.json`):
         "hooks": [
           {
             "type": "command",
-            "command": "/path/to/mcp-cmd/src/bin/hooks-bash.ts"
+            "command": "/path/to/mcp-cmd/src/bin/pre-tool-use/bash.ts"
           }
         ]
       },
@@ -235,7 +235,7 @@ Add to your Claude Code settings (`~/.claude.json`):
         "hooks": [
           {
             "type": "command",
-            "command": "/path/to/mcp-cmd/src/bin/hooks-cmd.ts"
+            "command": "/path/to/mcp-cmd/src/bin/pre-tool-use/cmd.ts"
           }
         ]
       }
