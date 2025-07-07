@@ -1,12 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import * as z from "zod";
+// MCP SDK compatibility: Using Zod v3 for inputSchema compatibility
+import * as zV3 from "zod";
 import { runCommand } from "../command.ts";
 import {
   deleteExpiredOutputs,
   getOutputById,
   isOutputId,
 } from "../db/ouputs.ts";
-import { OutputIdSchema } from "../db/schema.ts";
+import { OutputIdSchemaV3 } from "./schemas.ts";
+import type { OutputId } from "../db/schema.ts";
 import { decodeBase64 } from "@std/encoding";
 
 /**
@@ -34,11 +36,9 @@ async function resolveStdinContent(
     return undefined;
   }
 
-  if (!isOutputId(stdinForOutput)) {
-    throw new Error(`Invalid output ID: ${stdinForOutput}`);
-  }
+  const validatedId = validateAndConvertOutputId(stdinForOutput);
 
-  const output = await getOutputById(stdinForOutput);
+  const output = await getOutputById(validatedId);
   if (!output) {
     throw new Error(`Output with ID ${stdinForOutput} not found.`);
   }
@@ -68,18 +68,28 @@ function createToolResponse(content: Record<string, unknown>) {
 }
 
 /**
- * Validates that a string is a valid output ID
- * @param id - The ID to validate
+ * Validates that a string is a valid output ID and converts to branded type
+ * 
+ * This function bridges Zod v3 (MCP) and Zod v4 (app) type systems.
+ * It validates using the v3 schema but returns the v4 branded type.
+ * 
+ * @param id - The ID to validate (from Zod v3 MCP schema)
  * @throws Error if ID is invalid
+ * @returns The validated ID as OutputId branded type (for Zod v4 app layer)
  */
-function validateOutputId(id: string): asserts id is string {
+function validateAndConvertOutputId(id: string): OutputId {
   if (!isOutputId(id)) {
     throw new Error(`Invalid output ID: ${id}`);
   }
+  return id as OutputId;
 }
 
 /**
  * Creates and configures an MCP (Model Context Protocol) server for command execution
+ *
+ * IMPORTANT: This file uses Zod v3 for MCP SDK compatibility.
+ * The MCP SDK requires v3-compatible inputSchema types, so we cannot use Zod v4 here.
+ * For type conversion between v3 and v4, see validateAndConvertOutputId() function.
  *
  * The server provides two main tools:
  * 1. runCommand - Execute shell commands with various options
@@ -114,29 +124,29 @@ Supports binary data (automatically base64 encoded) and stdin input.
 Use this for running any command like "ls", "curl", "git", etc.`,
 
       inputSchema: {
-        command: z.string().describe(
+        command: zV3.string().describe(
           `The base command to execute (e.g. "ls", "curl", "git", "python", "node").
 Do not include arguments here - use the "args" parameter for arguments.`,
         ),
-        args: z.array(z.string()).optional().describe(
+        args: zV3.array(zV3.string()).optional().describe(
           `Array of command-line arguments (e.g. ["-l", "-a"] for "ls -l -a", or ["--version"] for version checks).
 Each argument should be a separate string in the array.`,
         ),
-        stdin: z.string().optional().describe(
+        stdin: zV3.string().optional().describe(
           `Text input to send to the command's stdin.
 Use this for interactive commands that expect input, or to pipe data into commands like "grep" or "sort".
 Cannot be used together with stdinForOutput.`,
         ),
 
-        stdinForOutput: OutputIdSchema.optional().describe(
+        stdinForOutput: OutputIdSchemaV3.optional().describe(
           `9-digit numeric output ID of a previous command's output to use as stdin for this command. This enables command chaining - the stdout from the referenced command will be fed into this command's stdin.
 Cannot be used together with stdin.`,
         ),
-        cwd: z.string().optional().describe(
+        cwd: zV3.string().optional().describe(
           `Working directory for the command execution.
 If not provided, uses the current working directory.`,
         ),
-        acknowledgeWarnings: z.array(z.string()).optional().describe(
+        acknowledgeWarnings: zV3.array(zV3.string()).optional().describe(
           `Array of warning names to acknowledge (e.g. ["warn-shell-expansion", "warn-dangerous-flags"]).
 Used to bypass specific warnings after understanding the risks.`,
         ),
@@ -177,21 +187,21 @@ Use includeStdout=false and includeStderr=false to save tokens when you only nee
 This is the primary tool for checking command results after running a command with runCommand.`,
 
     inputSchema: {
-      id: OutputIdSchema.describe(
+      id: OutputIdSchemaV3.describe(
         `The 9-digit numeric output ID returned from a previous runCommand execution.
 Use this to get all information about the command execution.`,
       ),
-      includeStdout: z.boolean().optional().describe(
+      includeStdout: zV3.boolean().optional().describe(
         `Whether to include stdout content in the response. Defaults to true. Set to false to save tokens when you only need status/metadata/stderr.`,
       ),
-      includeStderr: z.boolean().optional().describe(
+      includeStderr: zV3.boolean().optional().describe(
         `Whether to include stderr content in the response. Defaults to true. Set to false to save tokens when you only need status/metadata/stdout.`,
       ),
     },
   }, async ({ id, includeStdout = true, includeStderr = true }) => {
-    validateOutputId(id);
+    const validatedId = validateAndConvertOutputId(id);
 
-    const output = await getOutputById(id);
+    const output = await getOutputById(validatedId);
     if (!output) {
       throw new Error(`Command with ID ${id} not found.`);
     }

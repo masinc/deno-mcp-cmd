@@ -7,7 +7,7 @@ import { decodeBase64, encodeBase64 } from "@std/encoding";
 export function createOutputId(): OutputId {
   // 9桁数字 = 3トークン、10億パターン (25トークンから88%削減)
   const id = Math.floor(Math.random() * 1000000000).toString().padStart(9, "0");
-  return OutputIdSchema.parse(id);
+  return OutputIdSchema.parse(id) as OutputId;
 }
 
 export function isOutputId(id: unknown): id is OutputId {
@@ -17,7 +17,7 @@ export function isOutputId(id: unknown): id is OutputId {
 
 export function idToString(id: OutputId): string {
   // Zodスキーマでバリデーション
-  return OutputIdSchema.parse(id);
+  return OutputIdSchema.parse(id) as string;
 }
 
 type InsertOutputParams = {
@@ -39,7 +39,7 @@ export async function insertOutput(
     const createdAt = new Date().toISOString();
 
     await db.insert(outputs).values({
-      id: params.id,
+      id: idToString(params.id), // Convert branded type to string for DB
       stdout: params.stdout,
       stdoutIsEncoded: params.stdoutIsEncoded ?? false,
       stderr: params.stderr ?? "",
@@ -80,7 +80,7 @@ export async function getOutputById(
     }
 
     const db = await initOrGetDrizzleDb();
-    const result = await db.select().from(outputs).where(eq(outputs.id, id))
+    const result = await db.select().from(outputs).where(eq(outputs.id, idToString(id)))
       .limit(1);
 
     if (result.length === 0) {
@@ -174,7 +174,7 @@ export async function updateOutput(params: UpdateOutputParams): Promise<void> {
     }
 
     const result = await db.update(outputs).set(updateValues).where(
-      eq(outputs.id, params.id),
+      eq(outputs.id, idToString(params.id)),
     );
 
     if (result.rowsAffected !== 1) {

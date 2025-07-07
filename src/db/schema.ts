@@ -1,6 +1,6 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import * as z from "zod";
+import * as z from "zod/v4";
 
 export const outputs = sqliteTable("outputs", {
   id: text("id").primaryKey(),
