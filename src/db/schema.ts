@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import * as z from "zod/v4";
 
 export const outputs = sqliteTable("outputs", {
@@ -20,10 +20,12 @@ export const outputs = sqliteTable("outputs", {
 // Zod schemas for validation
 export const insertOutputSchema = createInsertSchema(outputs);
 export const selectOutputSchema = createSelectSchema(outputs);
+export const updateOutputSchema = createUpdateSchema(outputs);
 
 // Types inferred from schema
 export type Output = typeof outputs.$inferSelect;
 export type NewOutput = typeof outputs.$inferInsert;
+export type UpdateOutput = z.infer<typeof updateOutputSchema>;
 
 // Custom branded type for OutputId (9桁数字)
 export const OutputIdSchema = z.string().regex(/^\d{9}$/).brand("outputId");
@@ -42,7 +44,7 @@ export const OutputSchema = z.object({
   status: CommandStatusSchema.default("running"),
   exitCode: z.number().nullable().default(null),
   cwd: z.string(),
-  createdAt: z.string().datetime(),
+  createdAt: z.string(),
 });
 
 // Additional type for complete output validation

@@ -16,8 +16,9 @@ export function isOutputId(id: unknown): id is OutputId {
 }
 
 export function idToString(id: OutputId): string {
-  // Zodスキーマでバリデーション
-  return OutputIdSchema.parse(id) as string;
+  // Zodスキーマでバリデーションして文字列に変換
+  OutputIdSchema.parse(id); // バリデーションのみ
+  return id as string; // branded typeから文字列への変換
 }
 
 type InsertOutputParams = {

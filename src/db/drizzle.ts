@@ -53,7 +53,7 @@ async function initDatabase(client: Client) {
       status TEXT NOT NULL DEFAULT 'running',
       exitCode INTEGER DEFAULT NULL,
       cwd TEXT NOT NULL,
-      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+      createdAt TEXT NOT NULL
     )
   `);
 }
