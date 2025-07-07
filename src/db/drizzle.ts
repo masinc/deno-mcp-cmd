@@ -4,6 +4,7 @@ import { outputs } from "./schema.ts";
 import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { homedir } from "node:os";
+import { deleteExpiredOutputs } from "./ouputs.ts";
 let db: ReturnType<typeof drizzle> | null = null;
 
 export async function initOrGetDrizzleDb(
@@ -56,6 +57,20 @@ async function initDatabase(client: Client) {
       createdAt TEXT NOT NULL
     )
   `);
+
+  // データベース初期化時にクリーンアップを実行
+  await cleanupExpiredOutputsOnInit();
+}
+
+async function cleanupExpiredOutputsOnInit(expirationDays: number = 1) {
+  try {
+    const deletedCount = await deleteExpiredOutputs(expirationDays);
+    if (deletedCount > 0) {
+      console.log(`Database cleanup: ${deletedCount} expired records deleted`);
+    }
+  } catch (error) {
+    console.warn(`Database cleanup failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
 }
 
 export { outputs };

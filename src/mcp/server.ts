@@ -3,7 +3,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as zV3 from "zod";
 import { runCommand } from "../command.ts";
 import {
-  deleteExpiredOutputs,
   getOutputById,
   isOutputId,
 } from "../db/ouputs.ts";
@@ -105,7 +104,6 @@ function validateAndConvertOutputId(id: string): OutputId {
  * @returns Promise resolving to configured MCP server instance
  */
 export async function createMcpServer(): Promise<McpServer> {
-  await deleteExpiredOutputs();
 
   const mcpServer = new McpServer({
     name: "mcp-cmd",
