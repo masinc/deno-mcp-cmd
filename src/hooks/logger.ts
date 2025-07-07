@@ -67,3 +67,23 @@ export function logBlock(command: string, reason: string): void {
 export function logAllow(command: string): void {
   logger.info("Allowed command: {command}", { command });
 }
+
+/**
+ * Logs error both to console and logger
+ * @param message - Error message
+ * @param details - Optional error details
+ */
+export function logError(message: string, details?: unknown): void {
+  console.error(message, details);
+  logger.error("{message} {details}", { message, details });
+}
+
+/**
+ * Logs warning both to console and logger
+ * @param message - Warning message
+ * @param details - Optional warning details
+ */
+export function logWarning(message: string, details?: unknown): void {
+  console.warn(message, details);
+  logger.warn("{message} {details}", { message, details });
+}

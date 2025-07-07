@@ -3,7 +3,7 @@
 // "mcp__cmd__getCommand",
 // "mcp__cmd__runCommand"
 
-import { logger, logHookInput } from "../../hooks/logger.ts";
+import { logger, logHookInput, logError } from "../../hooks/logger.ts";
 import { writeOutputAndExit } from "../../hooks/output.ts";
 import {
   type PreToolUseInput,
@@ -43,8 +43,8 @@ async function hookToolRun(input: PreToolUseInput): Promise<never> {
 
   const toolInputResult = ToolInputRunSchema.safeParse(normalizedToolInput);
   if (!toolInputResult.success) {
-    console.error("Invalid tool input:", toolInputResult.error);
-    console.error("Received data:", JSON.stringify(input.tool_input, null, 2));
+    logError("Invalid tool input:", toolInputResult.error);
+    logError("Received data:", JSON.stringify(input.tool_input, null, 2));
     Deno.exit(1);
   }
 
@@ -85,7 +85,7 @@ async function hookToolRun(input: PreToolUseInput): Promise<never> {
   } else if (result.action === "skip") {
     writeOutputAndExit({});
   } else {
-    console.error("Unknown action:", result.action);
+    logError("Unknown action:", result.action);
     Deno.exit(1);
   }
 }
@@ -110,7 +110,7 @@ async function main() {
     JSON.parse(await readStdin()),
   );
   if (!parsedInput.success) {
-    console.error("Invalid input:", parsedInput.error);
+    logError("Invalid input:", parsedInput.error);
     Deno.exit(1);
   }
 

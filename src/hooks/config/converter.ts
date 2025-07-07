@@ -1,4 +1,5 @@
 import { createRule, createWarningRule } from "../rules/builders.ts";
+import { logWarning } from "../logger.ts";
 import type { Rule, RuleContext } from "../rules/schema.ts";
 import {
   type ApproveCommandRule,
@@ -269,7 +270,7 @@ function evaluateCondition(ctx: RuleContext, condition: string): boolean {
     );
     return Boolean(func(command, args, cwd));
   } catch (error) {
-    console.warn(`Conditional rule evaluation failed: ${error}`);
+    logWarning(`Conditional rule evaluation failed: ${error}`);
     return false;
   }
 }

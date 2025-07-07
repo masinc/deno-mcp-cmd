@@ -4,6 +4,7 @@ import {
   type SimpleOutput,
   SimpleOutputSchema,
 } from "./schema.ts";
+import { logError } from "./logger.ts";
 
 /**
  * Writes the output to stdout as JSON and exits the process
@@ -39,6 +40,6 @@ export function writeOutputAndExit(
   }
 
   // If neither format matches, exit with error
-  console.error("Invalid output format:", output);
+  logError("Invalid output format:", output);
   Deno.exit(1);
 }
